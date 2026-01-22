@@ -90,16 +90,20 @@ public class ComponentLoader : IDisposable
 
     public Type? FindComponent(string className)
     {
+        // Normalize the input to handle alternative generic syntax
+        // e.g., "ValueField<1>" or "ValueField[1]" -> "ValueField`1"
+        string normalizedName = NormalizeGenericName(className);
+
         // Try exact match on full name first
         Type? targetType = _derivedTypes.FirstOrDefault(t =>
-            t.FullName != null && t.FullName.Equals(className, StringComparison.OrdinalIgnoreCase));
+            t.FullName != null && t.FullName.Equals(normalizedName, StringComparison.OrdinalIgnoreCase));
 
         if (targetType != null)
             return targetType;
 
         // Try exact match on short name
         targetType = _derivedTypes.FirstOrDefault(t =>
-            t.Name.Equals(className, StringComparison.OrdinalIgnoreCase));
+            t.Name.Equals(normalizedName, StringComparison.OrdinalIgnoreCase));
 
         if (targetType != null)
             return targetType;
@@ -107,12 +111,52 @@ public class ComponentLoader : IDisposable
         // Try partial match
         var matches = _derivedTypes.Where(t =>
             t.FullName != null &&
-            t.FullName.Contains(className, StringComparison.OrdinalIgnoreCase)).ToList();
+            t.FullName.Contains(normalizedName, StringComparison.OrdinalIgnoreCase)).ToList();
 
         if (matches.Count == 1)
             return matches[0];
 
         return null;
+    }
+
+    private static string NormalizeGenericName(string name)
+    {
+        // Convert alternative generic notations to the CLR backtick format
+        // "ValueField<1>" -> "ValueField`1"
+        // "ValueField[1]" -> "ValueField`1"
+        // "ValueField<T>" -> "ValueField`1" (single type param)
+        // "Dictionary<K,V>" -> "Dictionary`2" (multiple type params)
+
+        // Handle angle bracket notation: TypeName<1> or TypeName<T> or TypeName<T,U>
+        var angleBracketMatch = System.Text.RegularExpressions.Regex.Match(
+            name, @"^(.+)<(\d+|[^>]+)>$");
+        if (angleBracketMatch.Success)
+        {
+            string baseName = angleBracketMatch.Groups[1].Value;
+            string content = angleBracketMatch.Groups[2].Value;
+
+            // If it's already a number, use it directly
+            if (int.TryParse(content, out int arity))
+            {
+                return $"{baseName}`{arity}";
+            }
+
+            // Otherwise count type parameters (comma-separated)
+            int typeParamCount = content.Split(',').Length;
+            return $"{baseName}`{typeParamCount}";
+        }
+
+        // Handle square bracket notation: TypeName[1]
+        var squareBracketMatch = System.Text.RegularExpressions.Regex.Match(
+            name, @"^(.+)\[(\d+)\]$");
+        if (squareBracketMatch.Success)
+        {
+            string baseName = squareBracketMatch.Groups[1].Value;
+            string arity = squareBracketMatch.Groups[2].Value;
+            return $"{baseName}`{arity}";
+        }
+
+        return name;
     }
 
     public List<Type> FindComponents(string pattern)
