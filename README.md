@@ -22,8 +22,50 @@ A .NET tool that analyzes FrooxEngine.dll and generates JSON Schema files for Re
 ## Building
 
 ```bash
-dotnet build
+dotnet build docgen.sln
 ```
+
+## Testing
+
+The project includes unit tests that verify schema generation against real FrooxEngine.dll output.
+
+### Running Tests
+
+```bash
+dotnet test docgen.sln
+```
+
+### Test Configuration
+
+By default, tests look for FrooxEngine.dll at:
+
+```txt
+F:\Steam\steamapps\common\Resonite\FrooxEngine.dll
+```
+
+To use a different location, set the `FROOXENGINE_DLL_PATH` environment variable:
+
+```bash
+# Windows (PowerShell)
+$env:FROOXENGINE_DLL_PATH = "C:\Path\To\FrooxEngine.dll"
+dotnet test docgen.sln
+
+# Windows (CMD)
+set FROOXENGINE_DLL_PATH=C:\Path\To\FrooxEngine.dll
+dotnet test docgen.sln
+
+# Linux/macOS
+FROOXENGINE_DLL_PATH=/path/to/FrooxEngine.dll dotnet test docgen.sln
+```
+
+### Test Coverage
+
+The tests verify:
+- **AudioOutput schema**: Metadata, componentType format, field types (float, int, bool, nullable bool), enum definitions, reference fields, sync lists
+- **ValueField\<T\> schema**: oneOf structure for generic components, type variants (bool, int, float, string, float3, color), vector/quaternion/color value schemas
+- **ComponentLoader**: Finding components by name, generic syntax normalization (`ValueField<1>`, `ValueField[1]`, `ValueField<T>`), inheritance chains
+- **PropertyAnalyzer**: Field extraction, friendly type name formatting
+- **JsonSchemaGenerator**: Schema structure, JSON serialization, `$ref` usage, `$defs` alphabetical sorting
 
 ## Usage
 
@@ -59,7 +101,8 @@ dotnet run -- /path/to/FrooxEngine.dll -p AudioOutput
 ```
 
 Output:
-```
+
+```txt
 Component: FrooxEngine.AudioOutput
 Abstract: False
 
@@ -86,7 +129,8 @@ dotnet run -- /path/to/FrooxEngine.dll -p "ValueField<1>"
 ```
 
 Output:
-```
+
+```txt
 Component: FrooxEngine.ValueField`1
 Abstract: False
 Generic: Yes (with type constraints)
@@ -188,7 +232,7 @@ Generated schemas use `$ref` to shared type definitions in `$defs`, reducing dup
 }
 ```
 
-### ValueField<T> Example (Generic Component)
+### `ValueField<T>` Example (Generic Component)
 
 Generic components with `[GenericTypes]` attribute generate a schema with `oneOf` containing all valid type instantiations:
 
