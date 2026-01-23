@@ -90,6 +90,7 @@ for (int i = 1; i < args.Length; i++)
 try
 {
     using var loader = ComponentLoader.Load(dllPath);
+    using var genericResolver = GenericTypeResolver.TryCreate(dllPath);
 
     if (debugClass != null)
     {
@@ -105,12 +106,12 @@ try
 
     if (generateAllSchemas || schemaClass != null)
     {
-        return GenerateSchemas(loader, schemaClass, outputDir);
+        return GenerateSchemas(loader, genericResolver, schemaClass, outputDir);
     }
 
     if (propsForClass != null)
     {
-        return ShowProperties(loader, propsForClass);
+        return ShowProperties(loader, genericResolver, propsForClass);
     }
 
     return ListComponents(loader, filterPattern);
@@ -121,7 +122,7 @@ catch (Exception ex)
     return 1;
 }
 
-static int GenerateSchemas(ComponentLoader loader, string? className, string outputDir)
+static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericResolver, string? className, string outputDir)
 {
     // Ensure output directory exists
     if (!Directory.Exists(outputDir))
@@ -129,7 +130,7 @@ static int GenerateSchemas(ComponentLoader loader, string? className, string out
         Directory.CreateDirectory(outputDir);
     }
 
-    var generator = new JsonSchemaGenerator(loader);
+    var generator = new JsonSchemaGenerator(loader, genericResolver);
     List<Type> typesToProcess;
 
     if (className != null)
@@ -244,7 +245,7 @@ static int ListComponents(ComponentLoader loader, string? filterPattern)
     return 0;
 }
 
-static int ShowProperties(ComponentLoader loader, string className)
+static int ShowProperties(ComponentLoader loader, GenericTypeResolver? genericResolver, string className)
 {
     var targetType = loader.FindComponent(className);
 
@@ -274,6 +275,22 @@ static int ShowProperties(ComponentLoader loader, string className)
 
     Console.WriteLine($"Component: {targetType.FullName}");
     Console.WriteLine($"Abstract: {targetType.IsAbstract}");
+
+    // Check for GenericTypes attribute on generic types
+    if (targetType.IsGenericTypeDefinition && genericResolver != null)
+    {
+        var allowedTypes = genericResolver.GetAllowedTypesForGeneric(targetType);
+        if (allowedTypes != null && allowedTypes.Length > 0)
+        {
+            Console.WriteLine($"Generic: Yes (with type constraints)");
+            Console.WriteLine();
+            Console.WriteLine($"Allowed types for T ({allowedTypes.Length}):");
+            foreach (var t in allowedTypes.OrderBy(t => t.Name))
+            {
+                Console.WriteLine($"  {t.FullName}");
+            }
+        }
+    }
 
     Console.WriteLine();
     Console.WriteLine("Inheritance chain:");

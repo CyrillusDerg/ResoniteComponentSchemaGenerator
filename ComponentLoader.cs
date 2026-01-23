@@ -189,6 +189,30 @@ public class ComponentLoader : IDisposable
         return chain;
     }
 
+    /// <summary>
+    /// Looks up a type by its full name in the loaded assembly or its references.
+    /// </summary>
+    public Type? FindTypeByFullName(string fullName)
+    {
+        // Try in the main assembly first
+        var type = _assembly.GetType(fullName);
+        if (type != null) return type;
+
+        // Try in referenced assemblies
+        foreach (var assemblyName in _assembly.GetReferencedAssemblies())
+        {
+            try
+            {
+                var refAssembly = _mlc.LoadFromAssemblyName(assemblyName);
+                type = refAssembly.GetType(fullName);
+                if (type != null) return type;
+            }
+            catch { }
+        }
+
+        return null;
+    }
+
     public void Dispose()
     {
         _mlc.Dispose();
