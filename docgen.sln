@@ -4,6 +4,8 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComponentAnalyzer", "ComponentAnalyzer.csproj", "{DCBFA5A9-93EA-CF77-D8FE-16D94DE5DA1A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComponentAnalyzer.Tests", "ComponentAnalyzer.Tests\ComponentAnalyzer.Tests.csproj", "{E8F3B2A1-5C4D-4E6F-8A9B-1C2D3E4F5A6B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,6 +16,10 @@ Global
 		{DCBFA5A9-93EA-CF77-D8FE-16D94DE5DA1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DCBFA5A9-93EA-CF77-D8FE-16D94DE5DA1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DCBFA5A9-93EA-CF77-D8FE-16D94DE5DA1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8F3B2A1-5C4D-4E6F-8A9B-1C2D3E4F5A6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8F3B2A1-5C4D-4E6F-8A9B-1C2D3E4F5A6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8F3B2A1-5C4D-4E6F-8A9B-1C2D3E4F5A6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8F3B2A1-5C4D-4E6F-8A9B-1C2D3E4F5A6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
