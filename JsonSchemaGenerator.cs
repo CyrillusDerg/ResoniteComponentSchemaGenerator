@@ -1868,6 +1868,9 @@ public class JsonSchemaGenerator
 
     private JsonObject GenerateSyncRefListSchema(ComponentField field, Type elementType)
     {
+        // Format the element type in ResoniteLink notation
+        string formattedElementType = FormatResoniteLinkTypeName(elementType);
+
         return new JsonObject
         {
             ["type"] = "object",
@@ -1887,7 +1890,11 @@ public class JsonSchemaGenerator
                         {
                             ["$type"] = new JsonObject { ["const"] = "reference" },
                             ["targetId"] = new JsonObject { ["type"] = new JsonArray { "string", "null" } },
-                            ["targetType"] = new JsonObject { ["type"] = "string" },
+                            ["targetType"] = new JsonObject
+                            {
+                                ["const"] = formattedElementType,
+                                ["description"] = "Type of the target"
+                            },
                             ["id"] = new JsonObject { ["type"] = "string" }
                         },
                         ["required"] = new JsonArray { "$type", "id" }
