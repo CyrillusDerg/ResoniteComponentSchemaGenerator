@@ -1,0 +1,32 @@
+      {
+        "componentType": "[FrooxEngine]FrooxEngine.StaticLocaleProvider",
+        "members": {
+          "persistent": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_210B"
+          },
+          "UpdateOrder": {
+            "$type": "int",
+            "value": 0,
+            "id": "Reso_210C"
+          },
+          "Enabled": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_210D"
+          },
+          "URL": {
+            "$type": "Uri",
+            "value": "builtin-locale://core/",
+            "id": "Reso_210E"
+          },
+          "OverrideLocale": {
+            "$type": "string",
+            "value": null,
+            "id": "Reso_210F"
+          }
+        },
+        "id": "Reso_9",
+        "isReferenceOnly": false
+      }

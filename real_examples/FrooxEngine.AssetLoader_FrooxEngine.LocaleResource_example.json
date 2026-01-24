@@ -1,0 +1,28 @@
+      {
+        "componentType": "[FrooxEngine]FrooxEngine.AssetLoader<[FrooxEngine]FrooxEngine.LocaleResource>",
+        "members": {
+          "persistent": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_21E0"
+          },
+          "UpdateOrder": {
+            "$type": "int",
+            "value": 0,
+            "id": "Reso_21E1"
+          },
+          "Enabled": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_21E2"
+          },
+          "Asset": {
+            "$type": "reference",
+            "targetId": "Reso_9",
+            "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.LocaleResource>",
+            "id": "Reso_21E3"
+          }
+        },
+        "id": "Reso_A",
+        "isReferenceOnly": false
+      }
