@@ -9,6 +9,8 @@ public class ValueFieldSchemaTests
     private readonly TestFixture _fixture;
     private readonly JsonObject _schema;
     private readonly JsonObject _defs;
+    private readonly JsonObject _commonSchema;
+    private readonly JsonObject _commonDefs;
 
     public ValueFieldSchemaTests(TestFixture fixture)
     {
@@ -20,6 +22,11 @@ public class ValueFieldSchemaTests
         _schema = fixture.SchemaGenerator.GenerateSchema(valueFieldType);
         _defs = _schema["$defs"]?.AsObject()
             ?? throw new InvalidOperationException("Schema missing $defs");
+
+        // Get common schema for checking common type definitions
+        _commonSchema = fixture.SchemaGenerator.GenerateCommonSchema();
+        _commonDefs = _commonSchema["$defs"]?.AsObject()
+            ?? throw new InvalidOperationException("Common schema missing $defs");
     }
 
     [Fact]
@@ -144,18 +151,18 @@ public class ValueFieldSchemaTests
     }
 
     [Fact]
-    public void Defs_BoolValue_CorrectlyDefined()
+    public void CommonDefs_BoolValue_CorrectlyDefined()
     {
-        var boolValue = _defs["bool_value"]?.AsObject();
+        var boolValue = _commonDefs["bool_value"]?.AsObject();
         Assert.NotNull(boolValue);
         Assert.Equal("bool", boolValue["properties"]?["$type"]?["const"]?.GetValue<string>());
         Assert.Equal("boolean", boolValue["properties"]?["value"]?["type"]?.GetValue<string>());
     }
 
     [Fact]
-    public void Defs_Float3Value_HasVectorStructure()
+    public void CommonDefs_Float3Value_HasVectorStructure()
     {
-        var float3Value = _defs["float3_value"]?.AsObject();
+        var float3Value = _commonDefs["float3_value"]?.AsObject();
         Assert.NotNull(float3Value);
         Assert.Equal("float3", float3Value["properties"]?["$type"]?["const"]?.GetValue<string>());
 
@@ -177,9 +184,9 @@ public class ValueFieldSchemaTests
     }
 
     [Fact]
-    public void Defs_Float4Value_HasVectorStructure()
+    public void CommonDefs_Float4Value_HasVectorStructure()
     {
-        var float4Value = _defs["float4_value"]?.AsObject();
+        var float4Value = _commonDefs["float4_value"]?.AsObject();
         Assert.NotNull(float4Value);
         Assert.Equal("float4", float4Value["properties"]?["$type"]?["const"]?.GetValue<string>());
 
@@ -199,9 +206,9 @@ public class ValueFieldSchemaTests
     }
 
     [Fact]
-    public void Defs_ColorValue_HasColorStructure()
+    public void CommonDefs_ColorValue_HasColorStructure()
     {
-        var colorValue = _defs["color_value"]?.AsObject();
+        var colorValue = _commonDefs["color_value"]?.AsObject();
         Assert.NotNull(colorValue);
         Assert.Equal("color", colorValue["properties"]?["$type"]?["const"]?.GetValue<string>());
 
@@ -217,9 +224,9 @@ public class ValueFieldSchemaTests
     }
 
     [Fact]
-    public void Defs_FloatQValue_HasQuaternionStructure()
+    public void CommonDefs_FloatQValue_HasQuaternionStructure()
     {
-        var floatQValue = _defs["floatQ_value"]?.AsObject();
+        var floatQValue = _commonDefs["floatQ_value"]?.AsObject();
         Assert.NotNull(floatQValue);
         Assert.Equal("floatQ", floatQValue["properties"]?["$type"]?["const"]?.GetValue<string>());
 
@@ -235,9 +242,9 @@ public class ValueFieldSchemaTests
     }
 
     [Fact]
-    public void Defs_StringValue_HasCorrectStructure()
+    public void CommonDefs_StringValue_HasCorrectStructure()
     {
-        var stringValue = _defs["string_value"]?.AsObject();
+        var stringValue = _commonDefs["string_value"]?.AsObject();
         Assert.NotNull(stringValue);
         Assert.Equal("string", stringValue["properties"]?["$type"]?["const"]?.GetValue<string>());
 

@@ -10,6 +10,8 @@ public class AudioOutputSchemaTests
     private readonly JsonObject _schema;
     private readonly JsonObject _members;
     private readonly JsonObject _defs;
+    private readonly JsonObject _commonSchema;
+    private readonly JsonObject _commonDefs;
 
     public AudioOutputSchemaTests(TestFixture fixture)
     {
@@ -23,6 +25,11 @@ public class AudioOutputSchemaTests
             ?? throw new InvalidOperationException("Schema missing members/properties");
         _defs = _schema["$defs"]?.AsObject()
             ?? throw new InvalidOperationException("Schema missing $defs");
+
+        // Get common schema for checking common type definitions
+        _commonSchema = fixture.SchemaGenerator.GenerateCommonSchema();
+        _commonDefs = _commonSchema["$defs"]?.AsObject()
+            ?? throw new InvalidOperationException("Common schema missing $defs");
     }
 
     [Fact]
@@ -45,33 +52,34 @@ public class AudioOutputSchemaTests
     public void Schema_ContainsVolumeField_AsFloat()
     {
         var volumeRef = _members["Volume"]?["$ref"]?.GetValue<string>();
-        Assert.Equal("#/$defs/float_value", volumeRef);
+        Assert.Equal("common.schema.json#/$defs/float_value", volumeRef);
     }
 
     [Fact]
     public void Schema_ContainsPriorityField_AsInt()
     {
         var priorityRef = _members["Priority"]?["$ref"]?.GetValue<string>();
-        Assert.Equal("#/$defs/int_value", priorityRef);
+        Assert.Equal("common.schema.json#/$defs/int_value", priorityRef);
     }
 
     [Fact]
     public void Schema_ContainsSpatializeField_AsBool()
     {
         var spatializeRef = _members["Spatialize"]?["$ref"]?.GetValue<string>();
-        Assert.Equal("#/$defs/bool_value", spatializeRef);
+        Assert.Equal("common.schema.json#/$defs/bool_value", spatializeRef);
     }
 
     [Fact]
     public void Schema_ContainsGlobalField_AsNullableBool()
     {
         var globalRef = _members["Global"]?["$ref"]?.GetValue<string>();
-        Assert.Equal("#/$defs/nullable_bool_value", globalRef);
+        Assert.Equal("common.schema.json#/$defs/nullable_bool_value", globalRef);
     }
 
     [Fact]
     public void Schema_ContainsAudioTypeGroupField_AsEnum()
     {
+        // Enums stay in local $defs
         var audioTypeGroupRef = _members["AudioTypeGroup"]?["$ref"]?.GetValue<string>();
         Assert.Equal("#/$defs/AudioTypeGroup_value", audioTypeGroupRef);
     }
@@ -96,9 +104,9 @@ public class AudioOutputSchemaTests
     }
 
     [Fact]
-    public void Defs_FloatValue_HasCorrectStructure()
+    public void CommonDefs_FloatValue_HasCorrectStructure()
     {
-        var floatDef = _defs["float_value"]?.AsObject();
+        var floatDef = _commonDefs["float_value"]?.AsObject();
         Assert.NotNull(floatDef);
         Assert.Equal("object", floatDef["type"]?.GetValue<string>());
         Assert.Equal("float", floatDef["properties"]?["$type"]?["const"]?.GetValue<string>());
@@ -111,27 +119,27 @@ public class AudioOutputSchemaTests
     }
 
     [Fact]
-    public void Defs_IntValue_HasCorrectStructure()
+    public void CommonDefs_IntValue_HasCorrectStructure()
     {
-        var intDef = _defs["int_value"]?.AsObject();
+        var intDef = _commonDefs["int_value"]?.AsObject();
         Assert.NotNull(intDef);
         Assert.Equal("int", intDef["properties"]?["$type"]?["const"]?.GetValue<string>());
         Assert.Equal("integer", intDef["properties"]?["value"]?["type"]?.GetValue<string>());
     }
 
     [Fact]
-    public void Defs_BoolValue_HasCorrectStructure()
+    public void CommonDefs_BoolValue_HasCorrectStructure()
     {
-        var boolDef = _defs["bool_value"]?.AsObject();
+        var boolDef = _commonDefs["bool_value"]?.AsObject();
         Assert.NotNull(boolDef);
         Assert.Equal("bool", boolDef["properties"]?["$type"]?["const"]?.GetValue<string>());
         Assert.Equal("boolean", boolDef["properties"]?["value"]?["type"]?.GetValue<string>());
     }
 
     [Fact]
-    public void Defs_NullableBoolValue_HasCorrectStructure()
+    public void CommonDefs_NullableBoolValue_HasCorrectStructure()
     {
-        var nullableBoolDef = _defs["nullable_bool_value"]?.AsObject();
+        var nullableBoolDef = _commonDefs["nullable_bool_value"]?.AsObject();
         Assert.NotNull(nullableBoolDef);
         Assert.Equal("bool?", nullableBoolDef["properties"]?["$type"]?["const"]?.GetValue<string>());
 
@@ -152,6 +160,7 @@ public class AudioOutputSchemaTests
     [Fact]
     public void Defs_AudioTypeGroupEnum_HasEnumValues()
     {
+        // Enums stay in local $defs
         var enumDef = _defs["AudioTypeGroup_value"]?.AsObject();
         Assert.NotNull(enumDef);
         Assert.Equal("enum", enumDef["properties"]?["$type"]?["const"]?.GetValue<string>());
@@ -169,6 +178,7 @@ public class AudioOutputSchemaTests
     [Fact]
     public void Defs_AudioRolloffCurveEnum_HasEnumValues()
     {
+        // Enums stay in local $defs
         var enumDef = _defs["AudioRolloffCurve_value"]?.AsObject();
         Assert.NotNull(enumDef);
 

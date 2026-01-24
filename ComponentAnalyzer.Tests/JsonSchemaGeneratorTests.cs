@@ -171,11 +171,11 @@ public class JsonSchemaGeneratorTests
         var members = schema["properties"]?["members"]?["properties"]?.AsObject();
         Assert.NotNull(members);
 
-        // Multiple float fields should use $ref
+        // Multiple float fields should use $ref to common schema
         var volumeRef = members["Volume"]?["$ref"]?.GetValue<string>();
         var pitchRef = members["Pitch"]?["$ref"]?.GetValue<string>();
 
-        Assert.Equal("#/$defs/float_value", volumeRef);
-        Assert.Equal("#/$defs/float_value", pitchRef);
+        Assert.Equal("common.schema.json#/$defs/float_value", volumeRef);
+        Assert.Equal("common.schema.json#/$defs/float_value", pitchRef);
     }
 }
