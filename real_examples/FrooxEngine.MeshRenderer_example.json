@@ -1,0 +1,62 @@
+                      {
+                        "componentType": "[FrooxEngine]FrooxEngine.MeshRenderer",
+                        "members": {
+                          "persistent": {
+                            "$type": "bool",
+                            "value": true,
+                            "id": "Reso_6374"
+                          },
+                          "UpdateOrder": {
+                            "$type": "int",
+                            "value": 0,
+                            "id": "Reso_6375"
+                          },
+                          "Enabled": {
+                            "$type": "bool",
+                            "value": false,
+                            "id": "Reso_6376"
+                          },
+                          "Mesh": {
+                            "$type": "reference",
+                            "targetId": "Reso_17C2",
+                            "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Mesh>",
+                            "id": "Reso_6377"
+                          },
+                          "Materials": {
+                            "$type": "list",
+                            "elements": [
+                              {
+                                "$type": "reference",
+                                "targetId": "Reso_17C1",
+                                "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Material>",
+                                "id": "Reso_6378"
+                              }
+                            ],
+                            "id": "Reso_6379"
+                          },
+                          "MaterialPropertyBlocks": {
+                            "$type": "list",
+                            "elements": [],
+                            "id": "Reso_637A"
+                          },
+                          "ShadowCastMode": {
+                            "$type": "enum",
+                            "value": "Off",
+                            "enumType": "ShadowCastMode",
+                            "id": "Reso_637B"
+                          },
+                          "MotionVectorMode": {
+                            "$type": "enum",
+                            "value": "Object",
+                            "enumType": "MotionVectorMode",
+                            "id": "Reso_637C"
+                          },
+                          "SortingOrder": {
+                            "$type": "int",
+                            "value": 0,
+                            "id": "Reso_637D"
+                          }
+                        },
+                        "id": "Reso_17C3",
+                        "isReferenceOnly": false
+                      }
