@@ -118,15 +118,14 @@ public class JsonSchemaGenerator
         }
 
         // Color types
-        string [] colorTypes = ["color", "colorX", "color32"];
+        string[] colorTypes = ["color", "colorX", "color32"];
         foreach (var typeName in colorTypes)
         {
             var includeProfile = (typeName is "colorX");
             result[$"{typeName}_value"] = GenerateColorTypeDefinition(
                 typeName, isNullable: false, includeProfile: includeProfile);
             result[$"nullable_{typeName}_value"] = GenerateColorTypeDefinition(
-                typeName, isNullable: true, includeProfile: inclueProfile);
-
+                typeName, isNullable: true, includeProfile: includeProfile);
         }
 
         // Matrix types
@@ -146,7 +145,74 @@ public class JsonSchemaGenerator
             }
         }
 
+        // IField<T> reference types for FieldDrive<T> and RelayRef<IField<T>>
+        // These use the format [FrooxEngine]FrooxEngine.IField<T>
+        foreach (var typeName in primitiveTypes)
+        {
+            result[$"IField_{typeName}_ref"] = GenerateIFieldReferenceDefinition(typeName);
+        }
+
+        foreach (var prefix in vectorPrefixes)
+        {
+            foreach (var dim in dimensions)
+            {
+                string typeName = $"{prefix}{dim}";
+                result[$"IField_{typeName}_ref"] = GenerateIFieldReferenceDefinition(typeName);
+            }
+        }
+
+        foreach (var typeName in quaternionTypes)
+        {
+            result[$"IField_{typeName}_ref"] = GenerateIFieldReferenceDefinition(typeName);
+        }
+
+        foreach (var typeName in colorTypes)
+        {
+            result[$"IField_{typeName}_ref"] = GenerateIFieldReferenceDefinition(typeName);
+        }
+
+        foreach (var prefix in matrixPrefixes)
+        {
+            foreach (var size in matrixSizes)
+            {
+                string typeName = $"{prefix}{size}";
+                result[$"IField_{typeName}_ref"] = GenerateIFieldReferenceDefinition(typeName);
+            }
+        }
+
         return result;
+    }
+
+    /// <summary>
+    /// Generates an IField reference definition for the common schema.
+    /// Used for FieldDrive&lt;T&gt; and RelayRef&lt;IField&lt;T&gt;&gt;.
+    /// </summary>
+    private static JsonObject GenerateIFieldReferenceDefinition(string typeName)
+    {
+        string targetType = $"[FrooxEngine]FrooxEngine.IField<{typeName}>";
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Reference to IField<{typeName}>",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "reference" },
+                ["targetId"] = new JsonObject
+                {
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the target field (null if no target)"
+                },
+                ["targetType"] = new JsonObject
+                {
+                    ["const"] = targetType,
+                    ["description"] = "Type of the target field"
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
     }
 
     /// <summary>
@@ -387,8 +453,15 @@ public class JsonSchemaGenerator
     private static bool IsCommonTypeDefinition(string typeDefName)
     {
         // Enum types have names like "BlendMode_value" or "nullable_ColorMask_value"
-        // Common types have names like "bool_value", "float3_value", "colorX_value"
+        // Common types have names like "bool_value", "float3_value", "colorX_value", "IField_bool_ref"
         // We identify common types by checking if they match known patterns
+
+        // IField reference types (e.g., IField_bool_ref, IField_float3_ref)
+        if (typeDefName.StartsWith("IField_") && typeDefName.EndsWith("_ref"))
+        {
+            string innerType = typeDefName["IField_".Length..^"_ref".Length];
+            return IsCommonInnerType(innerType);
+        }
 
         string baseName = typeDefName;
         if (baseName.StartsWith("nullable_"))
@@ -400,36 +473,40 @@ public class JsonSchemaGenerator
             baseName = baseName[..^"_value".Length];
         }
 
+        return IsCommonInnerType(baseName);
+    }
+
+    /// <summary>
+    /// Checks if a type name is a common inner type (primitive, vector, quaternion, color, or matrix).
+    /// </summary>
+    private static bool IsCommonInnerType(string typeName)
+    {
         // Known primitive types
         string[] primitives = ["bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong",
                                "float", "double", "decimal", "string", "char", "DateTime", "TimeSpan", "Uri"];
-        if (primitives.Contains(baseName))
+        if (primitives.Contains(typeName))
             return true;
 
         // Vector types (float2, int3, bool4, etc.)
-        if (IsVectorType(baseName, out _))
+        if (IsVectorType(typeName, out _))
             return true;
 
         // Quaternion types
-        if (baseName is "floatQ" or "doubleQ")
+        if (typeName is "floatQ" or "doubleQ")
             return true;
 
         // Color types
-        if (baseName is "color" or "colorX" or "color32")
+        if (typeName is "color" or "colorX" or "color32")
             return true;
 
         // Matrix types (float2x2, double3x3, etc.)
-        if (baseName.Contains("x") && (baseName.StartsWith("float") || baseName.StartsWith("double")))
+        if (typeName.Contains("x") && (typeName.StartsWith("float") || typeName.StartsWith("double")))
         {
             // Check if it's a valid matrix pattern
-            var parts = baseName.Split('x');
-            if (parts.Length == 2)
-            {
-                string prefix = baseName.StartsWith("double") ? "double" : "float";
-                string dims = baseName[prefix.Length..];
-                if (dims is "2x2" or "3x3" or "4x4")
-                    return true;
-            }
+            string prefix = typeName.StartsWith("double") ? "double" : "float";
+            string dims = typeName[prefix.Length..];
+            if (dims is "2x2" or "3x3" or "4x4")
+                return true;
         }
 
         return false;
@@ -1347,12 +1424,74 @@ public class JsonSchemaGenerator
         {
             "SyncList" => GenerateSyncListSchema(field, innerType, useRefs, typeDefsNeeded),
             "SyncRefList" => GenerateSyncRefListSchema(field, innerType),
-            "SyncRef" or "RelayRef" or "DestroyRelayRef" => GenerateReferenceSchema(field, innerType),
+            "SyncRef" or "RelayRef" or "DestroyRelayRef" => GenerateReferenceSchemaOrCommonRef(field, innerType, typeDefsNeeded),
             "AssetRef" => GenerateAssetRefSchema(field, innerType),
-            "FieldDrive" => GenerateFieldDriveSchema(field, innerType),
+            "FieldDrive" => GenerateFieldDriveSchemaOrCommonRef(field, innerType, typeDefsNeeded),
             "DriveRef" => GenerateDriveRefSchema(field, innerType),
             _ => GenerateFieldSchema(field, innerType, useRefs, typeDefsNeeded)
         };
+    }
+
+    /// <summary>
+    /// Generates a reference schema, using a common ref for IField types when appropriate.
+    /// </summary>
+    private JsonObject GenerateReferenceSchemaOrCommonRef(ComponentField field, Type targetType, Dictionary<string, Type>? typeDefsNeeded)
+    {
+        // Check if this is a reference to IField<T> where T is a common type
+        if (UseExternalCommonSchema && IsIFieldType(targetType, out Type? fieldInnerType) && fieldInnerType != null)
+        {
+            string? resoniteLinkType = GetResoniteLinkType(fieldInnerType);
+            if (resoniteLinkType != null && IsCommonInnerType(resoniteLinkType))
+            {
+                string refName = $"IField_{resoniteLinkType}_ref";
+                return new JsonObject { ["$ref"] = GetRefPath(refName) };
+            }
+        }
+
+        return GenerateReferenceSchema(field, targetType);
+    }
+
+    /// <summary>
+    /// Generates a FieldDrive schema, using a common ref when appropriate.
+    /// </summary>
+    private JsonObject GenerateFieldDriveSchemaOrCommonRef(ComponentField field, Type drivenType, Dictionary<string, Type>? typeDefsNeeded)
+    {
+        // Check if the driven type is a common type
+        if (UseExternalCommonSchema)
+        {
+            string? resoniteLinkType = GetResoniteLinkType(drivenType);
+            if (resoniteLinkType != null && IsCommonInnerType(resoniteLinkType))
+            {
+                string refName = $"IField_{resoniteLinkType}_ref";
+                return new JsonObject { ["$ref"] = GetRefPath(refName) };
+            }
+        }
+
+        return GenerateFieldDriveSchema(field, drivenType);
+    }
+
+    /// <summary>
+    /// Checks if a type is IField&lt;T&gt; and extracts the inner type.
+    /// </summary>
+    private static bool IsIFieldType(Type type, out Type? innerType)
+    {
+        innerType = null;
+
+        if (!type.IsGenericType)
+            return false;
+
+        string typeName = type.Name;
+        if (!typeName.StartsWith("IField`"))
+            return false;
+
+        var genericArgs = type.GetGenericArguments();
+        if (genericArgs.Length == 1)
+        {
+            innerType = genericArgs[0];
+            return true;
+        }
+
+        return false;
     }
 
     private JsonObject GenerateFieldSchema(ComponentField field, Type innerType, bool useRefs = false, Dictionary<string, Type>? typeDefsNeeded = null)

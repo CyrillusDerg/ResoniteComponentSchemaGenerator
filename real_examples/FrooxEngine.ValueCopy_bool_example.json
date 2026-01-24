@@ -1,0 +1,39 @@
+                      {
+                        "componentType": "[FrooxEngine]FrooxEngine.ValueCopy<bool>",
+                        "members": {
+                          "persistent": {
+                            "$type": "bool",
+                            "value": true,
+                            "id": "Reso_6316"
+                          },
+                          "UpdateOrder": {
+                            "$type": "int",
+                            "value": 0,
+                            "id": "Reso_6317"
+                          },
+                          "Enabled": {
+                            "$type": "bool",
+                            "value": true,
+                            "id": "Reso_6318"
+                          },
+                          "Source": {
+                            "$type": "reference",
+                            "targetId": "Reso_217A",
+                            "targetType": "[FrooxEngine]FrooxEngine.IField<bool>",
+                            "id": "Reso_6319"
+                          },
+                          "Target": {
+                            "$type": "reference",
+                            "targetId": "Reso_631A",
+                            "targetType": "[FrooxEngine]FrooxEngine.IField<bool>",
+                            "id": "Reso_631B"
+                          },
+                          "WriteBack": {
+                            "$type": "bool",
+                            "value": false,
+                            "id": "Reso_631C"
+                          }
+                        },
+                        "id": "Reso_17B9",
+                        "isReferenceOnly": false
+                      }

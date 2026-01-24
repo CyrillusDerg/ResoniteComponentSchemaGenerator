@@ -116,6 +116,104 @@ public class RealExampleValidationTests
         Assert.True(asset.ContainsKey("targetType"));
     }
 
+    [Fact]
+    public void ValueCopy_ValidatesRealExample()
+    {
+        // This is a generic FrooxEngine component with FieldDrive and RelayRef members
+        var componentType = _fixture.Loader.FindComponent("ValueCopy`1");
+        Assert.NotNull(componentType);
+
+        // Generate schema
+        var schema = _fixture.SchemaGenerator.GenerateSchema(componentType);
+
+        // Load example
+        var examplePath = Path.Combine(ExamplesPath, "FrooxEngine.ValueCopy_bool_example.json");
+        Assert.True(File.Exists(examplePath), $"Example file not found: {examplePath}");
+        var exampleJson = File.ReadAllText(examplePath);
+        var example = JsonNode.Parse(exampleJson);
+        Assert.NotNull(example);
+
+        // For generic types, check that the example's componentType matches a valid variant
+        var exampleComponentType = example["componentType"]?.GetValue<string>();
+        Assert.NotNull(exampleComponentType);
+        Assert.Contains("ValueCopy", exampleComponentType);
+        Assert.Contains("bool", exampleComponentType);
+
+        // Check members exist
+        var members = example["members"]?.AsObject();
+        Assert.NotNull(members);
+        Assert.True(members.ContainsKey("persistent"));
+        Assert.True(members.ContainsKey("UpdateOrder"));
+        Assert.True(members.ContainsKey("Enabled"));
+        Assert.True(members.ContainsKey("Source"));  // RelayRef<IField<T>>
+        Assert.True(members.ContainsKey("Target"));  // FieldDrive<T>
+        Assert.True(members.ContainsKey("WriteBack"));
+
+        // Validate Source and Target are reference types targeting IField<bool>
+        var source = members["Source"]?.AsObject();
+        Assert.NotNull(source);
+        Assert.Equal("reference", source["$type"]?.GetValue<string>());
+        Assert.True(source.ContainsKey("targetId"));
+        Assert.Equal("[FrooxEngine]FrooxEngine.IField<bool>", source["targetType"]?.GetValue<string>());
+
+        var target = members["Target"]?.AsObject();
+        Assert.NotNull(target);
+        Assert.Equal("reference", target["$type"]?.GetValue<string>());
+        Assert.True(target.ContainsKey("targetId"));
+        Assert.Equal("[FrooxEngine]FrooxEngine.IField<bool>", target["targetType"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public void BooleanValueDriver_ValidatesRealExample()
+    {
+        // This is a generic FrooxEngine component with FieldDrive member
+        var componentType = _fixture.Loader.FindComponent("BooleanValueDriver`1");
+        Assert.NotNull(componentType);
+
+        // Generate schema
+        var schema = _fixture.SchemaGenerator.GenerateSchema(componentType);
+
+        // Load example
+        var examplePath = Path.Combine(ExamplesPath, "FrooxEngine.BooleanValueDriver_float2_example.json");
+        Assert.True(File.Exists(examplePath), $"Example file not found: {examplePath}");
+        var exampleJson = File.ReadAllText(examplePath);
+        var example = JsonNode.Parse(exampleJson);
+        Assert.NotNull(example);
+
+        // For generic types, check that the example's componentType matches a valid variant
+        var exampleComponentType = example["componentType"]?.GetValue<string>();
+        Assert.NotNull(exampleComponentType);
+        Assert.Contains("BooleanValueDriver", exampleComponentType);
+        Assert.Contains("float2", exampleComponentType);
+
+        // Check members exist
+        var members = example["members"]?.AsObject();
+        Assert.NotNull(members);
+        Assert.True(members.ContainsKey("persistent"));
+        Assert.True(members.ContainsKey("UpdateOrder"));
+        Assert.True(members.ContainsKey("Enabled"));
+        Assert.True(members.ContainsKey("State"));
+        Assert.True(members.ContainsKey("TargetField"));  // FieldDrive<T>
+        Assert.True(members.ContainsKey("FalseValue"));
+        Assert.True(members.ContainsKey("TrueValue"));
+
+        // Validate TargetField is a reference type targeting IField<float2>
+        var targetField = members["TargetField"]?.AsObject();
+        Assert.NotNull(targetField);
+        Assert.Equal("reference", targetField["$type"]?.GetValue<string>());
+        Assert.True(targetField.ContainsKey("targetId"));
+        Assert.Equal("[FrooxEngine]FrooxEngine.IField<float2>", targetField["targetType"]?.GetValue<string>());
+
+        // Validate FalseValue and TrueValue are float2 types
+        var falseValue = members["FalseValue"]?.AsObject();
+        Assert.NotNull(falseValue);
+        Assert.Equal("float2", falseValue["$type"]?.GetValue<string>());
+
+        var trueValue = members["TrueValue"]?.AsObject();
+        Assert.NotNull(trueValue);
+        Assert.Equal("float2", trueValue["$type"]?.GetValue<string>());
+    }
+
     private void ValidateComponentStructure(JsonObject schema, JsonNode example, string componentName)
     {
         // Check componentType matches

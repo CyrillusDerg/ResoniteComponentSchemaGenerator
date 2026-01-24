@@ -173,7 +173,9 @@ try
 
     if (generateAllSchemas || schemaClass != null || generateCommonSchema)
     {
-        return GenerateSchemas(loader, genericResolver, schemaClass, outputDir, generateCommonSchema);
+        // -c is implied when -s is used
+        bool useCommonSchema = generateCommonSchema || generateAllSchemas || schemaClass != null;
+        return GenerateSchemas(loader, genericResolver, schemaClass, outputDir, useCommonSchema);
     }
 
     if (propsForClass != null)
@@ -432,8 +434,8 @@ static void PrintUsage()
     Console.WriteLine("  -l, --list [pattern]   List components, optionally filtered by pattern");
     Console.WriteLine("  -p, --props <class>    Show public fields of a component");
     Console.WriteLine("  -s, --schema [class]   Generate JSON schema (for specific class or all)");
-    Console.WriteLine("  -c, --common           Generate common.schema.json with shared type definitions");
-    Console.WriteLine("                         When used with -s, component schemas reference common.schema.json");
+    Console.WriteLine("                         Automatically generates common.schema.json with shared type defs");
+    Console.WriteLine("  -c, --common           Generate only common.schema.json (no component schemas)");
     Console.WriteLine("  -o, --output <dir>     Output directory for schema files (default: current)");
     Console.WriteLine("  -d, --debug <class>    Show debug info (all members, generic constraints)");
     Console.WriteLine("  --components-only      Only load FrooxEngine components (exclude ProtoFlux)");
@@ -449,6 +451,5 @@ static void PrintUsage()
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas --components-only");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas --protoflux-only");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -c -o ./schemas  # Generate common.schema.json only");
-    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -c -o ./schemas  # Generate all schemas with shared refs");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -d \"AssetLoader<1>\"");
 }
