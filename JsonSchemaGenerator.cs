@@ -1842,12 +1842,9 @@ public class JsonSchemaGenerator
         }
         else
         {
-            elementsItemSchema = new JsonObject
-            {
-                ["type"] = "object",
-                ["additionalProperties"] = false,
-                ["description"] = $"Element type: {PropertyAnalyzer.GetFriendlyTypeName(elementType)}"
-            };
+            // Unknown element type - likely a SyncObject (e.g., Point<T>, GradientPoint<T>)
+            // Generate a permissive syncObject schema
+            elementsItemSchema = GenerateSyncObjectSchema(elementType);
         }
 
         return new JsonObject
@@ -2029,6 +2026,30 @@ public class JsonSchemaGenerator
                 ["id"] = new JsonObject { ["type"] = "string" }
             },
             ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    private JsonObject GenerateSyncObjectSchema(Type objectType)
+    {
+        // SyncObject types (like Point<T>, GradientPoint<T>) serialize with $type: "syncObject"
+        // and a members object containing their sync fields
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Sync object of type {PropertyAnalyzer.GetFriendlyTypeName(objectType)}",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "syncObject" },
+                ["members"] = new JsonObject
+                {
+                    ["type"] = "object",
+                    ["description"] = "Object members (fields) and their values"
+                    // additionalProperties defaults to true, allowing any member fields
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "members", "id" }
         };
     }
 
