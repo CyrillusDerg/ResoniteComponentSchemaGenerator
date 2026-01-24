@@ -1,0 +1,28 @@
+                              {
+                                "componentType": "[ProtoFluxBindings]FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.ObjectRelay<[FrooxEngine]FrooxEngine.Slot>",
+                                "members": {
+                                  "persistent": {
+                                    "$type": "bool",
+                                    "value": true,
+                                    "id": "Reso_5BAD"
+                                  },
+                                  "UpdateOrder": {
+                                    "$type": "int",
+                                    "value": 0,
+                                    "id": "Reso_5BAE"
+                                  },
+                                  "Enabled": {
+                                    "$type": "bool",
+                                    "value": true,
+                                    "id": "Reso_5BAF"
+                                  },
+                                  "Input": {
+                                    "$type": "reference",
+                                    "targetId": "Reso_1275",
+                                    "targetType": "[FrooxEngine]FrooxEngine.ProtoFlux.INodeObjectOutput<[FrooxEngine]FrooxEngine.Slot>",
+                                    "id": "Reso_5BB0"
+                                  }
+                                },
+                                "id": "Reso_125F",
+                                "isReferenceOnly": false
+                              }

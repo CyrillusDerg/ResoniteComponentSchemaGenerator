@@ -101,6 +101,61 @@ try
             return 1;
         }
         DebugMembers.PrintAllMembers(targetType);
+
+        // If it's a generic type, show constraint debug info
+        if (targetType.IsGenericTypeDefinition && genericResolver != null)
+        {
+            Console.WriteLine();
+            Console.WriteLine("=== Generic Type Debug Info ===");
+            var debugInfo = genericResolver.GetDebugInfo(targetType);
+            if (debugInfo != null)
+            {
+                Console.WriteLine($"Type: {debugInfo.TypeName}");
+                Console.WriteLine($"Has [GenericTypes] attribute: {debugInfo.HasGenericTypesAttribute}");
+
+                if (debugInfo.Error != null)
+                {
+                    Console.WriteLine($"Error: {debugInfo.Error}");
+                }
+                else
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("Generic Parameters:");
+                    foreach (var param in debugInfo.GenericParameters)
+                    {
+                        Console.WriteLine($"  {param.Name}:");
+                        Console.WriteLine($"    Attributes: {param.Attributes}");
+                        Console.WriteLine($"    Constraints ({param.Constraints.Count}):");
+                        foreach (var constraint in param.Constraints)
+                        {
+                            Console.WriteLine($"      {constraint}");
+                        }
+                    }
+
+                    Console.WriteLine();
+                    if (debugInfo.AllowedTypeNames != null && debugInfo.AllowedTypeNames.Length > 0)
+                    {
+                        Console.WriteLine($"Allowed Types ({debugInfo.AllowedTypeNames.Length}):");
+                        foreach (var typeName in debugInfo.AllowedTypeNames.Take(20))
+                        {
+                            Console.WriteLine($"  {typeName}");
+                        }
+                        if (debugInfo.AllowedTypeNames.Length > 20)
+                        {
+                            Console.WriteLine($"  ... and {debugInfo.AllowedTypeNames.Length - 20} more");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Allowed Types: (none found or no constraints)");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("Could not get debug info for generic type");
+            }
+        }
         return 0;
     }
 
@@ -330,6 +385,7 @@ static void PrintUsage()
     Console.WriteLine("  -p, --props <class>    Show public fields of a component");
     Console.WriteLine("  -s, --schema <class>   Generate JSON schema (for specific class or all)");
     Console.WriteLine("  -o, --output <dir>     Output directory for schema files (default: current)");
+    Console.WriteLine("  -d, --debug <class>    Show debug info (all members, generic constraints)");
     Console.WriteLine("  -h, --help             Show this help message");
     Console.WriteLine();
     Console.WriteLine("Examples:");
@@ -338,4 +394,5 @@ static void PrintUsage()
     Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -p AudioOutput        # Show fields of AudioOutput");
     Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -s AudioOutput        # Generate schema for AudioOutput");
     Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -s -o ./schemas       # Generate all schemas to ./schemas");
+    Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -d \"AssetLoader<1>\"   # Debug generic type constraints");
 }

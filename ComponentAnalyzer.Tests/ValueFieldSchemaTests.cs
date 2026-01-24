@@ -240,6 +240,11 @@ public class ValueFieldSchemaTests
         var stringValue = _defs["string_value"]?.AsObject();
         Assert.NotNull(stringValue);
         Assert.Equal("string", stringValue["properties"]?["$type"]?["const"]?.GetValue<string>());
-        Assert.Equal("string", stringValue["properties"]?["value"]?["type"]?.GetValue<string>());
+
+        // String values can be null, so type is an array ["string", "null"]
+        var valueType = stringValue["properties"]?["value"]?["type"]?.AsArray();
+        Assert.NotNull(valueType);
+        Assert.Contains("string", valueType.Select(t => t?.GetValue<string>()));
+        Assert.Contains("null", valueType.Select(t => t?.GetValue<string>()));
     }
 }

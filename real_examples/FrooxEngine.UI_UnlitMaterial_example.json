@@ -1,0 +1,203 @@
+      {
+        "componentType": "[FrooxEngine]FrooxEngine.UI_UnlitMaterial",
+        "members": {
+          "persistent": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_22C8"
+          },
+          "UpdateOrder": {
+            "$type": "int",
+            "value": 0,
+            "id": "Reso_22C9"
+          },
+          "Enabled": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_22CA"
+          },
+          "HighPriorityIntegration": {
+            "$type": "bool",
+            "value": false,
+            "id": "Reso_22CB"
+          },
+          "RectClip": {
+            "$type": "bool",
+            "value": false,
+            "id": "Reso_22CC"
+          },
+          "ColorMask": {
+            "$type": "enum",
+            "value": "RGBA",
+            "enumType": "ColorMask",
+            "id": "Reso_22CD"
+          },
+          "StencilComparison": {
+            "$type": "enum",
+            "value": "Always",
+            "enumType": "StencilComparison",
+            "id": "Reso_22CE"
+          },
+          "StencilOperation": {
+            "$type": "enum",
+            "value": "Keep",
+            "enumType": "StencilOperation",
+            "id": "Reso_22CF"
+          },
+          "StencilID": {
+            "$type": "byte",
+            "value": 0,
+            "id": "Reso_22D0"
+          },
+          "StencilWriteMask": {
+            "$type": "byte",
+            "value": 255,
+            "id": "Reso_22D1"
+          },
+          "StencilReadMask": {
+            "$type": "byte",
+            "value": 255,
+            "id": "Reso_22D2"
+          },
+          "RenderQueue": {
+            "$type": "int",
+            "value": -1,
+            "id": "Reso_22D3"
+          },
+          "_shader": {
+            "$type": "reference",
+            "targetId": null,
+            "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Shader>",
+            "id": "Reso_22D4"
+          },
+          "Texture": {
+            "$type": "reference",
+            "targetId": null,
+            "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.ITexture2D>",
+            "id": "Reso_22D5"
+          },
+          "TextureScale": {
+            "$type": "float2",
+            "value": {
+              "x": 1,
+              "y": 1
+            },
+            "id": "Reso_22D6"
+          },
+          "TextureOffset": {
+            "$type": "float2",
+            "value": {
+              "x": 0,
+              "y": 0
+            },
+            "id": "Reso_22D7"
+          },
+          "Tint": {
+            "$type": "colorX",
+            "value": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1,
+              "profile": "sRGB"
+            },
+            "id": "Reso_22D8"
+          },
+          "Overlay": {
+            "$type": "bool",
+            "value": false,
+            "id": "Reso_22D9"
+          },
+          "OverlayTint": {
+            "$type": "colorX",
+            "value": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 0.73,
+              "profile": "sRGB"
+            },
+            "id": "Reso_22DA"
+          },
+          "AlphaCutoff": {
+            "$type": "float",
+            "value": 0.01,
+            "id": "Reso_22DB"
+          },
+          "AlphaClip": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_22DC"
+          },
+          "TextureMode": {
+            "$type": "enum",
+            "value": "DirectColor",
+            "enumType": "UnlitTextureMode",
+            "id": "Reso_22DD"
+          },
+          "MaskTexture": {
+            "$type": "reference",
+            "targetId": null,
+            "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.ITexture2D>",
+            "id": "Reso_22DE"
+          },
+          "MaskScale": {
+            "$type": "float2",
+            "value": {
+              "x": 1,
+              "y": 1
+            },
+            "id": "Reso_22DF"
+          },
+          "MaskOffset": {
+            "$type": "float2",
+            "value": {
+              "x": 0,
+              "y": 0
+            },
+            "id": "Reso_22E0"
+          },
+          "MaskMode": {
+            "$type": "enum",
+            "value": "MultiplyAlpha",
+            "enumType": "MaskTextureMode",
+            "id": "Reso_22E1"
+          },
+          "BlendMode": {
+            "$type": "enum",
+            "value": "Alpha",
+            "enumType": "BlendMode",
+            "id": "Reso_22E2"
+          },
+          "Sidedness": {
+            "$type": "enum",
+            "value": "Double",
+            "enumType": "Sidedness",
+            "id": "Reso_22E3"
+          },
+          "ZWrite": {
+            "$type": "enum",
+            "value": "On",
+            "enumType": "ZWrite",
+            "id": "Reso_22E4"
+          },
+          "ZTest": {
+            "$type": "enum",
+            "value": "LessOrEqual",
+            "enumType": "ZTest",
+            "id": "Reso_22E5"
+          },
+          "OffsetFactor": {
+            "$type": "float",
+            "value": 1,
+            "id": "Reso_22E6"
+          },
+          "OffsetUnits": {
+            "$type": "float",
+            "value": 100,
+            "id": "Reso_22E7"
+          }
+        },
+        "id": "Reso_1C",
+        "isReferenceOnly": false
+      }

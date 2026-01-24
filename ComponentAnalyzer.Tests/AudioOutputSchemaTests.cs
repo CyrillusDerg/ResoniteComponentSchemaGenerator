@@ -141,11 +141,12 @@ public class AudioOutputSchemaTests
         Assert.Contains("boolean", valueType.Select(t => t?.GetValue<string>()));
         Assert.Contains("null", valueType.Select(t => t?.GetValue<string>()));
 
-        // Only $type is required for nullable (value can be omitted)
+        // $type and id are required for nullable (value can be omitted)
         var required = nullableBoolDef["required"]?.AsArray();
         Assert.NotNull(required);
         Assert.Contains("$type", required.Select(r => r?.GetValue<string>()));
-        Assert.Single(required);
+        Assert.Contains("id", required.Select(r => r?.GetValue<string>()));
+        Assert.Equal(2, required.Count);
     }
 
     [Fact]
