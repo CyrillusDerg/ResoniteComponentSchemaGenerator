@@ -47,6 +47,7 @@ public class JsonSchemaGenerator
             ["title"] = componentType.Name,
             ["description"] = $"ResoniteLink schema for {componentType.FullName}",
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["properties"] = new JsonObject
             {
                 ["componentType"] = new JsonObject
@@ -54,8 +55,19 @@ public class JsonSchemaGenerator
                     ["const"] = componentTypeName,
                     ["description"] = "The component type in Resonite notation"
                 },
-                ["members"] = membersSchema
-            }
+                ["members"] = membersSchema,
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
         };
 
         // Add $defs if we have type definitions
@@ -153,6 +165,7 @@ public class JsonSchemaGenerator
         return new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["title"] = $"{GetBaseTypeName(concreteType.GetGenericTypeDefinition())}<{GetSimpleTypeName(typeArg)}>",
             ["properties"] = new JsonObject
             {
@@ -161,8 +174,19 @@ public class JsonSchemaGenerator
                     ["const"] = componentTypeName,
                     ["description"] = "The component type in Resonite notation"
                 },
-                ["members"] = GenerateMembersSchema(concreteType, useRefs, typeDefsNeeded)
-            }
+                ["members"] = GenerateMembersSchema(concreteType, useRefs, typeDefsNeeded),
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
         };
     }
 
@@ -229,21 +253,20 @@ public class JsonSchemaGenerator
             var enumResult = new JsonObject
             {
                 ["type"] = "object",
+                ["additionalProperties"] = false,
                 ["properties"] = new JsonObject
                 {
                     ["$type"] = new JsonObject { ["const"] = isNullable ? "string?" : "string" },
-                    ["value"] = valueSchema
-                }
+                    ["value"] = valueSchema,
+                    ["id"] = new JsonObject { ["type"] = "string" }
+                },
+                ["required"] = new JsonArray { "$type", "id" }
             };
 
-            // Only require value for non-nullable types
+            // Also require value for non-nullable types
             if (!isNullable)
             {
-                enumResult["required"] = new JsonArray { "$type", "value" };
-            }
-            else
-            {
-                enumResult["required"] = new JsonArray { "$type" };
+                enumResult["required"] = new JsonArray { "$type", "value", "id" };
             }
 
             return enumResult;
@@ -255,20 +278,19 @@ public class JsonSchemaGenerator
             var vectorResult = new JsonObject
             {
                 ["type"] = "object",
+                ["additionalProperties"] = false,
                 ["properties"] = new JsonObject
                 {
                     ["$type"] = new JsonObject { ["const"] = schemaTypeName },
-                    ["value"] = GenerateVectorSchema(dimensions)
-                }
+                    ["value"] = GenerateVectorSchema(dimensions),
+                    ["id"] = new JsonObject { ["type"] = "string" }
+                },
+                ["required"] = new JsonArray { "$type", "id" }
             };
 
             if (!isNullable)
             {
-                vectorResult["required"] = new JsonArray { "$type", "value" };
-            }
-            else
-            {
-                vectorResult["required"] = new JsonArray { "$type" };
+                vectorResult["required"] = new JsonArray { "$type", "value", "id" };
             }
 
             return vectorResult;
@@ -279,20 +301,19 @@ public class JsonSchemaGenerator
             var quatResult = new JsonObject
             {
                 ["type"] = "object",
+                ["additionalProperties"] = false,
                 ["properties"] = new JsonObject
                 {
                     ["$type"] = new JsonObject { ["const"] = schemaTypeName },
-                    ["value"] = GenerateQuaternionSchema()
-                }
+                    ["value"] = GenerateQuaternionSchema(),
+                    ["id"] = new JsonObject { ["type"] = "string" }
+                },
+                ["required"] = new JsonArray { "$type", "id" }
             };
 
             if (!isNullable)
             {
-                quatResult["required"] = new JsonArray { "$type", "value" };
-            }
-            else
-            {
-                quatResult["required"] = new JsonArray { "$type" };
+                quatResult["required"] = new JsonArray { "$type", "value", "id" };
             }
 
             return quatResult;
@@ -303,20 +324,19 @@ public class JsonSchemaGenerator
             var colorResult = new JsonObject
             {
                 ["type"] = "object",
+                ["additionalProperties"] = false,
                 ["properties"] = new JsonObject
                 {
                     ["$type"] = new JsonObject { ["const"] = schemaTypeName },
-                    ["value"] = GenerateColorSchema()
-                }
+                    ["value"] = GenerateColorSchema(),
+                    ["id"] = new JsonObject { ["type"] = "string" }
+                },
+                ["required"] = new JsonArray { "$type", "id" }
             };
 
             if (!isNullable)
             {
-                colorResult["required"] = new JsonArray { "$type", "value" };
-            }
-            else
-            {
-                colorResult["required"] = new JsonArray { "$type" };
+                colorResult["required"] = new JsonArray { "$type", "value", "id" };
             }
 
             return colorResult;
@@ -330,7 +350,7 @@ public class JsonSchemaGenerator
                 => new JsonObject { ["type"] = isNullable ? new JsonArray { "integer", "null" } : "integer" },
             "float" or "double" or "decimal"
                 => new JsonObject { ["type"] = isNullable ? new JsonArray { "number", "null" } : "number" },
-            "string" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
+            "string" => new JsonObject { ["type"] = new JsonArray { "string", "null" } },  // Strings can always be null
             "char" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["maxLength"] = 1 },
             "DateTime" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["format"] = "date-time" },
             "TimeSpan" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
@@ -344,21 +364,20 @@ public class JsonSchemaGenerator
         var result = new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["properties"] = new JsonObject
             {
                 ["$type"] = new JsonObject { ["const"] = schemaTypeName },
-                ["value"] = primitiveValueSchema
-            }
+                ["value"] = primitiveValueSchema,
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
         };
 
-        // Only require value for non-nullable types
+        // Also require value for non-nullable types
         if (!isNullable)
         {
-            result["required"] = new JsonArray { "$type", "value" };
-        }
-        else
-        {
-            result["required"] = new JsonArray { "$type" };
+            result["required"] = new JsonArray { "$type", "value", "id" };
         }
 
         return result;
@@ -494,13 +513,16 @@ public class JsonSchemaGenerator
         {
             ["type"] = "object",
             ["description"] = "Component members (fields) and their values",
+            ["additionalProperties"] = false,
             ["properties"] = new JsonObject()
         };
 
         var properties = (JsonObject)membersSchema["properties"]!;
-        var fields = PropertyAnalyzer.GetPublicFields(componentType);
 
-        foreach (var field in fields.OrderBy(f => f.Name))
+        // Get all serializable fields including protected base class fields with NameOverride handling
+        var allFields = PropertyAnalyzer.GetAllSerializableFields(componentType);
+
+        foreach (var field in allFields.OrderBy(f => f.Name))
         {
             try
             {
@@ -511,6 +533,7 @@ public class JsonSchemaGenerator
             {
                 properties[field.Name] = new JsonObject
                 {
+                    ["additionalProperties"] = false,
                     ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
                 };
             }
@@ -546,6 +569,7 @@ public class JsonSchemaGenerator
             return new JsonObject
             {
                 ["type"] = "object",
+                ["additionalProperties"] = false,
                 ["description"] = $"Field type: {field.FriendlyTypeName}"
             };
         }
@@ -568,6 +592,7 @@ public class JsonSchemaGenerator
         var schema = new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["properties"] = new JsonObject
             {
                 ["$type"] = new JsonObject { ["const"] = resoniteLinkType },
@@ -633,7 +658,7 @@ public class JsonSchemaGenerator
                 => new JsonObject { ["type"] = "integer" },
             "System.Single" or "System.Double" or "System.Decimal"
                 => new JsonObject { ["type"] = "number" },
-            "System.String" => new JsonObject { ["type"] = "string" },
+            "System.String" => new JsonObject { ["type"] = new JsonArray { "string", "null" } },  // Strings can always be null
             "System.Char" => new JsonObject { ["type"] = "string", ["maxLength"] = 1 },
             "System.DateTime" or "System.DateTimeOffset"
                 => new JsonObject { ["type"] = "string", ["format"] = "date-time" },
@@ -699,6 +724,7 @@ public class JsonSchemaGenerator
         return new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["description"] = $"Reference to {PropertyAnalyzer.GetFriendlyTypeName(targetType)}",
             ["properties"] = new JsonObject
             {
@@ -712,9 +738,10 @@ public class JsonSchemaGenerator
                 {
                     ["type"] = "string",
                     ["description"] = "Type of the target (informational)"
-                }
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
             },
-            ["required"] = new JsonArray { "$type" }
+            ["required"] = new JsonArray { "$type", "id" }
         };
     }
 
@@ -723,6 +750,7 @@ public class JsonSchemaGenerator
         return new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["description"] = $"Asset reference to {PropertyAnalyzer.GetFriendlyTypeName(assetType)}",
             ["properties"] = new JsonObject
             {
@@ -736,9 +764,10 @@ public class JsonSchemaGenerator
                 {
                     ["type"] = "string",
                     ["description"] = "Type of the asset (informational)"
-                }
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
             },
-            ["required"] = new JsonArray { "$type" }
+            ["required"] = new JsonArray { "$type", "id" }
         };
     }
 
@@ -747,6 +776,7 @@ public class JsonSchemaGenerator
         return new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["description"] = $"Field drive targeting {PropertyAnalyzer.GetFriendlyTypeName(drivenType)}",
             ["properties"] = new JsonObject
             {
@@ -760,9 +790,10 @@ public class JsonSchemaGenerator
                 {
                     ["type"] = "string",
                     ["description"] = "Type of the driven field (informational)"
-                }
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
             },
-            ["required"] = new JsonArray { "$type" }
+            ["required"] = new JsonArray { "$type", "id" }
         };
     }
 
@@ -788,6 +819,7 @@ public class JsonSchemaGenerator
                 elementsItemSchema = new JsonObject
                 {
                     ["type"] = "object",
+                    ["additionalProperties"] = false,
                     ["properties"] = new JsonObject
                     {
                         ["$type"] = new JsonObject { ["const"] = elementResoniteLinkType },
@@ -801,6 +833,7 @@ public class JsonSchemaGenerator
             elementsItemSchema = new JsonObject
             {
                 ["type"] = "object",
+                ["additionalProperties"] = false,
                 ["properties"] = new JsonObject
                 {
                     ["$type"] = new JsonObject { ["const"] = elementResoniteLinkType },
@@ -813,6 +846,7 @@ public class JsonSchemaGenerator
             elementsItemSchema = new JsonObject
             {
                 ["type"] = "object",
+                ["additionalProperties"] = false,
                 ["description"] = $"Element type: {PropertyAnalyzer.GetFriendlyTypeName(elementType)}"
             };
         }
@@ -820,6 +854,7 @@ public class JsonSchemaGenerator
         return new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["description"] = $"Synchronized list of {PropertyAnalyzer.GetFriendlyTypeName(elementType)}",
             ["properties"] = new JsonObject
             {
@@ -828,9 +863,10 @@ public class JsonSchemaGenerator
                 {
                     ["type"] = "array",
                     ["items"] = elementsItemSchema
-                }
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
             },
-            ["required"] = new JsonArray { "$type" }
+            ["required"] = new JsonArray { "$type", "id" }
         };
     }
 
@@ -839,6 +875,7 @@ public class JsonSchemaGenerator
         return new JsonObject
         {
             ["type"] = "object",
+            ["additionalProperties"] = false,
             ["description"] = $"Synchronized reference list of {PropertyAnalyzer.GetFriendlyTypeName(elementType)}",
             ["properties"] = new JsonObject
             {
@@ -849,16 +886,20 @@ public class JsonSchemaGenerator
                     ["items"] = new JsonObject
                     {
                         ["type"] = "object",
+                        ["additionalProperties"] = false,
                         ["properties"] = new JsonObject
                         {
                             ["$type"] = new JsonObject { ["const"] = "reference" },
                             ["targetId"] = new JsonObject { ["type"] = "string" },
-                            ["targetType"] = new JsonObject { ["type"] = "string" }
-                        }
+                            ["targetType"] = new JsonObject { ["type"] = "string" },
+                            ["id"] = new JsonObject { ["type"] = "string" }
+                        },
+                        ["required"] = new JsonArray { "$type", "id" }
                     }
-                }
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
             },
-            ["required"] = new JsonArray { "$type" }
+            ["required"] = new JsonArray { "$type", "id" }
         };
     }
 
