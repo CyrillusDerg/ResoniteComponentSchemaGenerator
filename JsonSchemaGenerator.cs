@@ -11,10 +11,442 @@ public class JsonSchemaGenerator
     private readonly ComponentLoader _loader;
     private readonly GenericTypeResolver? _genericResolver;
 
+    /// <summary>
+    /// When true, common value types reference common.schema.json instead of being embedded in each schema.
+    /// Enum types are always embedded since they are component-specific.
+    /// </summary>
+    public bool UseExternalCommonSchema { get; set; }
+
+    /// <summary>
+    /// The filename of the common schema (default: "common.schema.json").
+    /// </summary>
+    public string CommonSchemaFileName { get; set; } = "common.schema.json";
+
     public JsonSchemaGenerator(ComponentLoader loader, GenericTypeResolver? genericResolver = null)
     {
         _loader = loader;
         _genericResolver = genericResolver;
+    }
+
+    /// <summary>
+    /// Generates the common schema containing all standard value type definitions.
+    /// This includes primitives, vectors, quaternions, colors, and matrices.
+    /// Enum types are NOT included as they are component-specific.
+    /// </summary>
+    public JsonObject GenerateCommonSchema()
+    {
+        var defs = new JsonObject();
+
+        // All common types that should be in the shared schema
+        var commonTypes = GetAllCommonTypeDefinitions();
+
+        foreach (var (defName, schema) in commonTypes.OrderBy(kvp => kvp.Key))
+        {
+            defs[defName] = schema;
+        }
+
+        return new JsonObject
+        {
+            ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
+            ["$id"] = CommonSchemaFileName,
+            ["title"] = "Common Value Types",
+            ["description"] = "Shared value type definitions for ResoniteLink component schemas",
+            ["$defs"] = defs
+        };
+    }
+
+    /// <summary>
+    /// Gets all common type definitions (non-enum types).
+    /// </summary>
+    private Dictionary<string, JsonObject> GetAllCommonTypeDefinitions()
+    {
+        var result = new Dictionary<string, JsonObject>();
+
+        // Primitive types (non-nullable and nullable)
+        string[] primitiveTypes = ["bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong",
+                                   "float", "double", "decimal", "string", "char", "DateTime", "TimeSpan", "Uri"];
+
+        foreach (var typeName in primitiveTypes)
+        {
+            // Non-nullable version
+            var nonNullableDef = GenerateCommonTypeDefinition(typeName, isNullable: false);
+            if (nonNullableDef != null)
+            {
+                result[$"{typeName}_value"] = nonNullableDef;
+            }
+
+            // Nullable version (except string which is already nullable)
+            if (typeName != "string")
+            {
+                var nullableDef = GenerateCommonTypeDefinition(typeName, isNullable: true);
+                if (nullableDef != null)
+                {
+                    result[$"nullable_{typeName}_value"] = nullableDef;
+                }
+            }
+        }
+
+        // Vector types (2, 3, 4 dimensions)
+        string[] vectorPrefixes = ["float", "double", "int", "uint", "long", "ulong", "short", "ushort",
+                                   "byte", "sbyte", "bool"];
+        int[] dimensions = [2, 3, 4];
+
+        foreach (var prefix in vectorPrefixes)
+        {
+            foreach (var dim in dimensions)
+            {
+                string typeName = $"{prefix}{dim}";
+                result[$"{typeName}_value"] = GenerateVectorTypeDefinition(typeName, dim, isNullable: false);
+                result[$"nullable_{typeName}_value"] = GenerateVectorTypeDefinition(typeName, dim, isNullable: true);
+            }
+        }
+
+        // Quaternion types
+        result["floatQ_value"] = GenerateQuaternionTypeDefinition("floatQ", isNullable: false);
+        result["nullable_floatQ_value"] = GenerateQuaternionTypeDefinition("floatQ", isNullable: true);
+        result["doubleQ_value"] = GenerateQuaternionTypeDefinition("doubleQ", isNullable: false);
+        result["nullable_doubleQ_value"] = GenerateQuaternionTypeDefinition("doubleQ", isNullable: true);
+
+        // Color types
+        result["color_value"] = GenerateColorTypeDefinition("color", isNullable: false, includeProfile: false);
+        result["nullable_color_value"] = GenerateColorTypeDefinition("color", isNullable: true, includeProfile: false);
+        result["colorX_value"] = GenerateColorTypeDefinition("colorX", isNullable: false, includeProfile: true);
+        result["nullable_colorX_value"] = GenerateColorTypeDefinition("colorX", isNullable: true, includeProfile: true);
+        result["color32_value"] = GenerateColor32TypeDefinition("color32", isNullable: false);
+        result["nullable_color32_value"] = GenerateColor32TypeDefinition("color32", isNullable: true);
+
+        // Matrix types
+        string[] matrixPrefixes = ["float", "double"];
+        string[] matrixSizes = ["2x2", "3x3", "4x4"];
+
+        foreach (var prefix in matrixPrefixes)
+        {
+            foreach (var size in matrixSizes)
+            {
+                string typeName = $"{prefix}{size}";
+                int dim = size[0] - '0'; // Extract dimension from "2x2", "3x3", "4x4"
+                result[$"{typeName}_value"] = GenerateMatrixTypeDefinition(typeName, dim, isNullable: false);
+                result[$"nullable_{typeName}_value"] = GenerateMatrixTypeDefinition(typeName, dim, isNullable: true);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generates a primitive type definition for the common schema.
+    /// </summary>
+    private static JsonObject? GenerateCommonTypeDefinition(string typeName, bool isNullable)
+    {
+        string schemaTypeName = isNullable ? $"{typeName}?" : typeName;
+
+        var valueSchema = typeName switch
+        {
+            "bool" => new JsonObject { ["type"] = isNullable ? new JsonArray { "boolean", "null" } : "boolean" },
+            "byte" or "sbyte" or "short" or "ushort" or "int" or "uint" or "long" or "ulong"
+                => new JsonObject { ["type"] = isNullable ? new JsonArray { "integer", "null" } : "integer" },
+            "float" or "double" or "decimal"
+                => new JsonObject { ["type"] = isNullable ? new JsonArray { "number", "null" } : "number" },
+            "string" => new JsonObject { ["type"] = new JsonArray { "string", "null" } },
+            "char" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["maxLength"] = 1 },
+            "DateTime" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["format"] = "date-time" },
+            "TimeSpan" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
+            "Uri" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
+            _ => null
+        };
+
+        if (valueSchema == null)
+            return null;
+
+        var result = new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = schemaTypeName },
+                ["value"] = valueSchema,
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+
+        // Require value for non-nullable types
+        if (!isNullable)
+        {
+            result["required"] = new JsonArray { "$type", "value", "id" };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generates a vector type definition for the common schema.
+    /// </summary>
+    private static JsonObject GenerateVectorTypeDefinition(string typeName, int dimensions, bool isNullable)
+    {
+        string schemaTypeName = isNullable ? $"{typeName}?" : typeName;
+
+        var result = new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = schemaTypeName },
+                ["value"] = GenerateVectorSchema(dimensions),
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+
+        if (!isNullable)
+        {
+            result["required"] = new JsonArray { "$type", "value", "id" };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generates a quaternion type definition for the common schema.
+    /// </summary>
+    private static JsonObject GenerateQuaternionTypeDefinition(string typeName, bool isNullable)
+    {
+        string schemaTypeName = isNullable ? $"{typeName}?" : typeName;
+
+        var result = new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = schemaTypeName },
+                ["value"] = GenerateQuaternionSchema(),
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+
+        if (!isNullable)
+        {
+            result["required"] = new JsonArray { "$type", "value", "id" };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generates a color type definition for the common schema.
+    /// </summary>
+    private static JsonObject GenerateColorTypeDefinition(string typeName, bool isNullable, bool includeProfile)
+    {
+        string schemaTypeName = isNullable ? $"{typeName}?" : typeName;
+
+        var result = new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = schemaTypeName },
+                ["value"] = GenerateColorSchema(includeProfile),
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+
+        if (!isNullable)
+        {
+            result["required"] = new JsonArray { "$type", "value", "id" };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generates a color32 type definition for the common schema.
+    /// </summary>
+    private static JsonObject GenerateColor32TypeDefinition(string typeName, bool isNullable)
+    {
+        string schemaTypeName = isNullable ? $"{typeName}?" : typeName;
+
+        var result = new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = schemaTypeName },
+                ["value"] = new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["r"] = new JsonObject { ["type"] = "integer" },
+                        ["g"] = new JsonObject { ["type"] = "integer" },
+                        ["b"] = new JsonObject { ["type"] = "integer" },
+                        ["a"] = new JsonObject { ["type"] = "integer" }
+                    },
+                    ["required"] = new JsonArray { "r", "g", "b", "a" }
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+
+        if (!isNullable)
+        {
+            result["required"] = new JsonArray { "$type", "value", "id" };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generates a matrix type definition for the common schema.
+    /// </summary>
+    private static JsonObject GenerateMatrixTypeDefinition(string typeName, int dimension, bool isNullable)
+    {
+        string schemaTypeName = isNullable ? $"{typeName}?" : typeName;
+
+        // Matrix is represented as an array of row vectors
+        var result = new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = schemaTypeName },
+                ["value"] = GenerateMatrixSchema(dimension),
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+
+        if (!isNullable)
+        {
+            result["required"] = new JsonArray { "$type", "value", "id" };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Generates a matrix value schema (array of row vectors).
+    /// </summary>
+    private static JsonObject GenerateMatrixSchema(int dimension)
+    {
+        // Matrix columns: m11, m12, m13, m14, m21, m22, etc.
+        var properties = new JsonObject();
+        for (int row = 1; row <= dimension; row++)
+        {
+            for (int col = 1; col <= dimension; col++)
+            {
+                properties[$"m{row}{col}"] = new JsonObject { ["type"] = "number" };
+            }
+        }
+
+        var required = new JsonArray();
+        for (int row = 1; row <= dimension; row++)
+        {
+            for (int col = 1; col <= dimension; col++)
+            {
+                required.Add($"m{row}{col}");
+            }
+        }
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = properties,
+            ["required"] = required
+        };
+    }
+
+    /// <summary>
+    /// Checks if a type definition name is for a common type (not an enum).
+    /// Common types go in common.schema.json, enum types stay in component schemas.
+    /// </summary>
+    private static bool IsCommonTypeDefinition(string typeDefName)
+    {
+        // Enum types have names like "BlendMode_value" or "nullable_ColorMask_value"
+        // Common types have names like "bool_value", "float3_value", "colorX_value"
+        // We identify common types by checking if they match known patterns
+
+        string baseName = typeDefName;
+        if (baseName.StartsWith("nullable_"))
+        {
+            baseName = baseName["nullable_".Length..];
+        }
+        if (baseName.EndsWith("_value"))
+        {
+            baseName = baseName[..^"_value".Length];
+        }
+
+        // Known primitive types
+        string[] primitives = ["bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong",
+                               "float", "double", "decimal", "string", "char", "DateTime", "TimeSpan", "Uri"];
+        if (primitives.Contains(baseName))
+            return true;
+
+        // Vector types (float2, int3, bool4, etc.)
+        if (IsVectorType(baseName, out _))
+            return true;
+
+        // Quaternion types
+        if (baseName is "floatQ" or "doubleQ")
+            return true;
+
+        // Color types
+        if (baseName is "color" or "colorX" or "color32")
+            return true;
+
+        // Matrix types (float2x2, double3x3, etc.)
+        if (baseName.Contains("x") && (baseName.StartsWith("float") || baseName.StartsWith("double")))
+        {
+            // Check if it's a valid matrix pattern
+            var parts = baseName.Split('x');
+            if (parts.Length == 2)
+            {
+                string prefix = baseName.StartsWith("double") ? "double" : "float";
+                string dims = baseName[prefix.Length..];
+                if (dims is "2x2" or "3x3" or "4x4")
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the $ref path for a type definition.
+    /// Returns external reference (common.schema.json#/$defs/xxx) for common types when UseExternalCommonSchema is true,
+    /// or local reference (#/$defs/xxx) otherwise.
+    /// </summary>
+    private string GetRefPath(string typeDefName)
+    {
+        if (UseExternalCommonSchema && IsCommonTypeDefinition(typeDefName))
+        {
+            return $"{CommonSchemaFileName}#/$defs/{typeDefName}";
+        }
+        return $"#/$defs/{typeDefName}";
+    }
+
+    /// <summary>
+    /// Adds a type definition to the needed defs dictionary if it should be embedded in the schema.
+    /// Common types are NOT added when UseExternalCommonSchema is true.
+    /// </summary>
+    private void AddTypeDefIfNeeded(Dictionary<string, Type>? typeDefsNeeded, string typeDefName, Type type)
+    {
+        if (typeDefsNeeded == null)
+            return;
+
+        // When using external common schema, don't add common types to local $defs
+        if (UseExternalCommonSchema && IsCommonTypeDefinition(typeDefName))
+            return;
+
+        typeDefsNeeded.TryAdd(typeDefName, type);
     }
 
     public JsonObject GenerateSchema(Type componentType)
@@ -90,11 +522,15 @@ public class JsonSchemaGenerator
             ["required"] = new JsonArray { "id", "isReferenceOnly" }
         };
 
-        // Add $defs if we have type definitions
-        if (typeDefsNeeded.Count > 0)
+        // Add $defs if we have type definitions (excluding common types when using external schema)
+        var localDefs = typeDefsNeeded
+            .Where(kvp => !UseExternalCommonSchema || !IsCommonTypeDefinition(kvp.Key))
+            .ToList();
+
+        if (localDefs.Count > 0)
         {
             var defs = new JsonObject();
-            foreach (var (typeDefName, type) in typeDefsNeeded.OrderBy(kvp => kvp.Key))
+            foreach (var (typeDefName, type) in localDefs.OrderBy(kvp => kvp.Key))
             {
                 var typeDef = GenerateTypeValueDefinitionFromType(type);
                 if (typeDef != null)
@@ -317,11 +753,15 @@ public class JsonSchemaGenerator
             ["required"] = new JsonArray { "id", "isReferenceOnly" }
         };
 
-        // Add $defs if we have type definitions
-        if (typeDefsNeeded.Count > 0)
+        // Add $defs if we have type definitions (excluding common types when using external schema)
+        var localDefs = typeDefsNeeded
+            .Where(kvp => !UseExternalCommonSchema || !IsCommonTypeDefinition(kvp.Key))
+            .ToList();
+
+        if (localDefs.Count > 0)
         {
             var defs = new JsonObject();
-            foreach (var (typeDefName, type) in typeDefsNeeded.OrderBy(kvp => kvp.Key))
+            foreach (var (typeDefName, type) in localDefs.OrderBy(kvp => kvp.Key))
             {
                 var typeDef = GenerateTypeValueDefinitionFromType(type);
                 if (typeDef != null)
@@ -372,9 +812,13 @@ public class JsonSchemaGenerator
             }
         }
 
-        // Add type value definitions to $defs first
+        // Add type value definitions to $defs first (excluding common types when using external schema)
         foreach (var (typeDefName, type) in typeDefsNeeded.OrderBy(kvp => kvp.Key))
         {
+            // Skip common types when using external common schema
+            if (UseExternalCommonSchema && IsCommonTypeDefinition(typeDefName))
+                continue;
+
             var typeDef = GenerateTypeValueDefinitionFromType(type);
             if (typeDef != null)
             {
@@ -916,10 +1360,10 @@ public class JsonSchemaGenerator
             string? typeDefName = GetTypeDefinitionName(innerType);
             if (typeDefName != null)
             {
-                typeDefsNeeded?.TryAdd(typeDefName, innerType);
+                AddTypeDefIfNeeded(typeDefsNeeded, typeDefName, innerType);
                 return new JsonObject
                 {
-                    ["$ref"] = $"#/$defs/{typeDefName}"
+                    ["$ref"] = GetRefPath(typeDefName)
                 };
             }
         }
@@ -1194,10 +1638,10 @@ public class JsonSchemaGenerator
             string? typeDefName = GetTypeDefinitionName(elementType);
             if (typeDefName != null)
             {
-                typeDefsNeeded?.TryAdd(typeDefName, elementType);
+                AddTypeDefIfNeeded(typeDefsNeeded, typeDefName, elementType);
                 elementsItemSchema = new JsonObject
                 {
-                    ["$ref"] = $"#/$defs/{typeDefName}"
+                    ["$ref"] = GetRefPath(typeDefName)
                 };
             }
             else

@@ -14,7 +14,7 @@ A .NET tool that analyzes FrooxEngine.dll and generates JSON Schema files for Re
 - Support for generic components with `[GenericTypes]` attribute (e.g., `ValueField<T>`)
 - Handles `[NameOverride]` attribute for correct serialized field names
 - Includes base component fields (`persistent`, `UpdateOrder`, `Enabled`) from inheritance chain
-- Schemas use `$ref` for shared type definitions to reduce duplication
+- Schemas use `$ref` and a common schema for shared type definitions to reduce duplication
 - All member values include required `id` field for ResoniteLink compatibility
 - Component schemas include required `id` and `isReferenceOnly` fields
 
@@ -81,6 +81,7 @@ Options:
   -l, --list [pattern]   List components, optionally filtered by pattern
   -p, --props <class>    Show public fields of a component
   -s, --schema [class]   Generate JSON schema (for specific class or all)
+  -c, --common           Create or use the common.schema.json file for shared types
   -o, --output <dir>     Output directory for schema files (default: current)
   -h, --help             Show this help message
 ```

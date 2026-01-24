@@ -13,6 +13,7 @@ string? debugClass = null;
 string? schemaClass = null;
 string outputDir = ".";
 bool generateAllSchemas = false;
+bool generateCommonSchema = false;
 AssemblySource sources = AssemblySource.All;
 
 for (int i = 1; i < args.Length; i++)
@@ -76,6 +77,10 @@ for (int i = 1; i < args.Length; i++)
                 Console.WriteLine("Error: --debug requires a class name argument");
                 return 1;
             }
+            break;
+        case "-c":
+        case "--common":
+            generateCommonSchema = true;
             break;
         case "--components-only":
             sources = AssemblySource.FrooxEngine;
@@ -166,9 +171,9 @@ try
         return 0;
     }
 
-    if (generateAllSchemas || schemaClass != null)
+    if (generateAllSchemas || schemaClass != null || generateCommonSchema)
     {
-        return GenerateSchemas(loader, genericResolver, schemaClass, outputDir);
+        return GenerateSchemas(loader, genericResolver, schemaClass, outputDir, generateCommonSchema);
     }
 
     if (propsForClass != null)
@@ -184,7 +189,7 @@ catch (Exception ex)
     return 1;
 }
 
-static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericResolver, string? className, string outputDir)
+static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericResolver, string? className, string outputDir, bool useExternalCommonSchema)
 {
     // Ensure output directory exists
     if (!Directory.Exists(outputDir))
@@ -193,6 +198,30 @@ static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericR
     }
 
     var generator = new JsonSchemaGenerator(loader, genericResolver);
+    generator.UseExternalCommonSchema = useExternalCommonSchema;
+
+    int successCount = 0;
+    int errorCount = 0;
+
+    // Generate common schema if requested
+    if (useExternalCommonSchema)
+    {
+        try
+        {
+            var commonSchema = generator.GenerateCommonSchema();
+            string commonJson = generator.SerializeSchema(commonSchema);
+            string commonFilePath = Path.Combine(outputDir, generator.CommonSchemaFileName);
+            File.WriteAllText(commonFilePath, commonJson);
+            Console.WriteLine($"Created: {generator.CommonSchemaFileName}");
+            successCount++;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating common schema: {ex.Message}");
+            errorCount++;
+        }
+    }
+
     List<Type> typesToProcess;
 
     if (className != null)
@@ -223,6 +252,17 @@ static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericR
         }
         typesToProcess = [targetType];
     }
+    else if (useExternalCommonSchema && className == null)
+    {
+        // If only -c was specified without -s, just generate common schema
+        Console.WriteLine();
+        Console.WriteLine($"Generated {successCount} schema(s)");
+        if (errorCount > 0)
+        {
+            Console.WriteLine($"Failed: {errorCount}");
+        }
+        return errorCount > 0 ? 1 : 0;
+    }
     else
     {
         // Generate for all non-abstract components
@@ -232,9 +272,6 @@ static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericR
     Console.WriteLine($"Generating JSON schemas for {typesToProcess.Count} component(s)...");
     Console.WriteLine($"Output directory: {Path.GetFullPath(outputDir)}");
     Console.WriteLine();
-
-    int successCount = 0;
-    int errorCount = 0;
 
     foreach (var type in typesToProcess)
     {
@@ -395,6 +432,8 @@ static void PrintUsage()
     Console.WriteLine("  -l, --list [pattern]   List components, optionally filtered by pattern");
     Console.WriteLine("  -p, --props <class>    Show public fields of a component");
     Console.WriteLine("  -s, --schema [class]   Generate JSON schema (for specific class or all)");
+    Console.WriteLine("  -c, --common           Generate common.schema.json with shared type definitions");
+    Console.WriteLine("                         When used with -s, component schemas reference common.schema.json");
     Console.WriteLine("  -o, --output <dir>     Output directory for schema files (default: current)");
     Console.WriteLine("  -d, --debug <class>    Show debug info (all members, generic constraints)");
     Console.WriteLine("  --components-only      Only load FrooxEngine components (exclude ProtoFlux)");
@@ -409,5 +448,7 @@ static void PrintUsage()
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas --components-only");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas --protoflux-only");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -c -o ./schemas  # Generate common.schema.json only");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -c -o ./schemas  # Generate all schemas with shared refs");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -d \"AssetLoader<1>\"");
 }
