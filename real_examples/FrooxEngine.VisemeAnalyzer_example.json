@@ -1,0 +1,109 @@
+                              {
+                                "componentType": "[FrooxEngine]FrooxEngine.VisemeAnalyzer",
+                                "members": {
+                                  "persistent": {
+                                    "$type": "bool",
+                                    "value": true,
+                                    "id": "Reso_64B4"
+                                  },
+                                  "UpdateOrder": {
+                                    "$type": "int",
+                                    "value": 0,
+                                    "id": "Reso_64B5"
+                                  },
+                                  "Enabled": {
+                                    "$type": "bool",
+                                    "value": true,
+                                    "id": "Reso_64B6"
+                                  },
+                                  "Source": {
+                                    "$type": "reference",
+                                    "targetId": "Reso_47B3",
+                                    "targetType": "[FrooxEngine]FrooxEngine.IWorldAudioDataSource",
+                                    "id": "Reso_64B7"
+                                  },
+                                  "RemoteSource": {
+                                    "$type": "reference",
+                                    "targetId": "Reso_64B8",
+                                    "targetType": "[FrooxEngine]FrooxEngine.MultiValueStream<float>",
+                                    "id": "Reso_64B9"
+                                  },
+                                  "PreferredAnalyzer": {
+                                    "$type": "enum",
+                                    "value": "OVRLipSync",
+                                    "enumType": "VisemeAnalyzerEngine",
+                                    "id": "Reso_64BA"
+                                  },
+                                  "Smoothing": {
+                                    "$type": "float",
+                                    "value": 0.7,
+                                    "id": "Reso_64BB"
+                                  },
+                                  "Silence": {
+                                    "$type": "empty",
+                                    "id": "Reso_64BC"
+                                  },
+                                  "PP": {
+                                    "$type": "empty",
+                                    "id": "Reso_64BD"
+                                  },
+                                  "FF": {
+                                    "$type": "empty",
+                                    "id": "Reso_64BE"
+                                  },
+                                  "TH": {
+                                    "$type": "empty",
+                                    "id": "Reso_64BF"
+                                  },
+                                  "DD": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C0"
+                                  },
+                                  "kk": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C1"
+                                  },
+                                  "CH": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C2"
+                                  },
+                                  "SS": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C3"
+                                  },
+                                  "nn": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C4"
+                                  },
+                                  "RR": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C5"
+                                  },
+                                  "aa": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C6"
+                                  },
+                                  "E": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C7"
+                                  },
+                                  "ih": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C8"
+                                  },
+                                  "oh": {
+                                    "$type": "empty",
+                                    "id": "Reso_64C9"
+                                  },
+                                  "ou": {
+                                    "$type": "empty",
+                                    "id": "Reso_64CA"
+                                  },
+                                  "LaughterProbability": {
+                                    "$type": "empty",
+                                    "id": "Reso_64CB"
+                                  }
+                                },
+                                "id": "Reso_17F6",
+                                "isReferenceOnly": false
+                              }

@@ -1441,6 +1441,7 @@ public class JsonSchemaGenerator
             "AssetRef" => GenerateAssetRefSchema(field, innerType),
             "FieldDrive" => GenerateFieldDriveSchemaOrCommonRef(field, innerType, typeDefsNeeded),
             "DriveRef" => GenerateDriveRefSchema(field, innerType),
+            "RawOutput" => GenerateRawOutputSchema(field, innerType),
             _ => GenerateFieldSchema(field, innerType, useRefs, typeDefsNeeded)
         };
     }
@@ -2014,6 +2015,23 @@ public class JsonSchemaGenerator
         };
     }
 
+    private JsonObject GenerateRawOutputSchema(ComponentField field, Type outputType)
+    {
+        // RawOutput<T> serializes as $type: "empty" with just an id - no value is stored
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Raw output of {PropertyAnalyzer.GetFriendlyTypeName(outputType)} (output-only, no stored value)",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "empty" },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
     private static string GetWrapperTypeName(Type type)
     {
         if (!type.IsGenericType)
@@ -2032,7 +2050,7 @@ public class JsonSchemaGenerator
         string typeName = GetWrapperTypeName(type);
 
         string[] wrapperTypes = ["Sync", "FieldDrive", "DriveRef", "AssetRef", "SyncRef", "RelayRef",
-                                  "DestroyRelayRef", "SyncList", "SyncRefList", "SyncAssetList", "SyncFieldList"];
+                                  "DestroyRelayRef", "SyncList", "SyncRefList", "SyncAssetList", "SyncFieldList", "RawOutput"];
 
         if (wrapperTypes.Contains(typeName))
         {
