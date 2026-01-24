@@ -11,32 +11,72 @@ namespace ComponentAnalyzer;
 public class GenericTypeResolver : IDisposable
 {
     private readonly AssemblyLoadContext _loadContext;
-    private readonly Assembly _assembly;
+    private readonly Assembly _primaryAssembly;
+    private readonly List<Assembly> _sourceAssemblies;
     private readonly Type? _genericTypesAttributeType;
     private readonly Dictionary<string, Type[]> _interfaceImplementorsCache = new();
 
-    private GenericTypeResolver(AssemblyLoadContext loadContext, Assembly assembly)
+    private GenericTypeResolver(AssemblyLoadContext loadContext, Assembly primaryAssembly, List<Assembly> sourceAssemblies)
     {
         _loadContext = loadContext;
-        _assembly = assembly;
+        _primaryAssembly = primaryAssembly;
+        _sourceAssemblies = sourceAssemblies;
 
         // Find the GenericTypesAttribute class
-        _genericTypesAttributeType = assembly.GetType("FrooxEngine.GenericTypesAttribute");
+        _genericTypesAttributeType = primaryAssembly.GetType("FrooxEngine.GenericTypesAttribute");
     }
 
     public bool IsAvailable => true; // Always available now that we support constraints
 
-    public static GenericTypeResolver? TryCreate(string dllPath)
+    /// <summary>
+    /// Creates a GenericTypeResolver for the specified Resonite directory.
+    /// </summary>
+    /// <param name="resoniteDirectory">Path to the Resonite directory or a DLL file within it.</param>
+    /// <param name="sources">Which assemblies to load for type resolution.</param>
+    public static GenericTypeResolver? TryCreate(string resoniteDirectory, AssemblySource sources = AssemblySource.All)
     {
         try
         {
-            string dllDirectory = Path.GetDirectoryName(Path.GetFullPath(dllPath)) ?? ".";
+            // Support both directory path and direct DLL path for backwards compatibility
+            string directory;
+            if (File.Exists(resoniteDirectory) && resoniteDirectory.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                directory = Path.GetDirectoryName(Path.GetFullPath(resoniteDirectory)) ?? ".";
+            }
+            else if (Directory.Exists(resoniteDirectory))
+            {
+                directory = Path.GetFullPath(resoniteDirectory);
+            }
+            else
+            {
+                Console.WriteLine($"Warning: Directory not found: {resoniteDirectory}");
+                return null;
+            }
+
+            string frooxEnginePath = Path.Combine(directory, "FrooxEngine.dll");
+            if (!File.Exists(frooxEnginePath))
+            {
+                Console.WriteLine($"Warning: FrooxEngine.dll not found in: {directory}");
+                return null;
+            }
 
             // Create a custom load context that can resolve dependencies
-            var loadContext = new FrooxEngineLoadContext(dllDirectory);
-            var assembly = loadContext.LoadFromAssemblyPath(Path.GetFullPath(dllPath));
+            var loadContext = new FrooxEngineLoadContext(directory);
+            var primaryAssembly = loadContext.LoadFromAssemblyPath(frooxEnginePath);
 
-            var resolver = new GenericTypeResolver(loadContext, assembly);
+            // Load additional source assemblies
+            var sourceAssemblies = new List<Assembly> { primaryAssembly };
+            if (sources.HasFlag(AssemblySource.ProtoFluxBindings))
+            {
+                string protoFluxBindingsPath = Path.Combine(directory, "ProtoFluxBindings.dll");
+                if (File.Exists(protoFluxBindingsPath))
+                {
+                    var protoFluxBindings = loadContext.LoadFromAssemblyPath(protoFluxBindingsPath);
+                    sourceAssemblies.Add(protoFluxBindings);
+                }
+            }
+
+            var resolver = new GenericTypeResolver(loadContext, primaryAssembly, sourceAssemblies);
 
             if (!resolver.IsAvailable)
             {
@@ -55,6 +95,19 @@ public class GenericTypeResolver : IDisposable
     }
 
     /// <summary>
+    /// Finds a type by full name across all source assemblies.
+    /// </summary>
+    private Type? FindTypeInSourceAssemblies(string fullName)
+    {
+        foreach (var assembly in _sourceAssemblies)
+        {
+            var type = assembly.GetType(fullName);
+            if (type != null) return type;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Checks if a type has the GenericTypesAttribute.
     /// </summary>
     public bool HasGenericTypesAttribute(Type metadataType)
@@ -67,7 +120,7 @@ public class GenericTypeResolver : IDisposable
             var fullName = metadataType.FullName;
             if (fullName == null) return false;
 
-            var executableType = _assembly.GetType(fullName);
+            var executableType = FindTypeInSourceAssemblies(fullName);
             if (executableType == null) return false;
 
             var attributes = executableType.GetCustomAttributes(_genericTypesAttributeType, false);
@@ -128,7 +181,7 @@ public class GenericTypeResolver : IDisposable
             if (fullName == null)
                 return null;
 
-            var executableType = _assembly.GetType(fullName);
+            var executableType = FindTypeInSourceAssemblies(fullName);
             if (executableType == null)
                 return null;
 
@@ -175,7 +228,7 @@ public class GenericTypeResolver : IDisposable
             if (fullName == null)
                 return null;
 
-            var executableType = _assembly.GetType(fullName);
+            var executableType = FindTypeInSourceAssemblies(fullName);
             if (executableType == null)
                 return null;
 
@@ -236,16 +289,20 @@ public class GenericTypeResolver : IDisposable
     {
         var result = new List<Type>();
 
-        // Get all loaded assemblies in our context
-        var assemblies = new List<Assembly> { _assembly };
-        foreach (var assemblyName in _assembly.GetReferencedAssemblies())
+        // Get all source assemblies plus referenced assemblies
+        var assemblies = new List<Assembly>(_sourceAssemblies);
+        foreach (var sourceAssembly in _sourceAssemblies)
         {
-            try
+            foreach (var assemblyName in sourceAssembly.GetReferencedAssemblies())
             {
-                var refAssembly = _loadContext.LoadFromAssemblyName(assemblyName);
-                assemblies.Add(refAssembly);
+                try
+                {
+                    var refAssembly = _loadContext.LoadFromAssemblyName(assemblyName);
+                    if (!assemblies.Contains(refAssembly))
+                        assemblies.Add(refAssembly);
+                }
+                catch { }
             }
-            catch { }
         }
 
         foreach (var assembly in assemblies)
@@ -297,7 +354,7 @@ public class GenericTypeResolver : IDisposable
             if (fullName == null)
                 return null;
 
-            var executableType = _assembly.GetType(fullName);
+            var executableType = FindTypeInSourceAssemblies(fullName);
             if (executableType == null)
                 return null;
 
@@ -350,24 +407,27 @@ public class GenericTypeResolver : IDisposable
     }
 
     /// <summary>
-    /// Looks up a type by its full name in the loaded assembly or its references.
+    /// Looks up a type by its full name in the loaded assemblies or their references.
     /// </summary>
     private Type? GetTypeByName(string fullName)
     {
-        // Try in the main assembly first
-        var type = _assembly.GetType(fullName);
+        // Try in source assemblies first
+        var type = FindTypeInSourceAssemblies(fullName);
         if (type != null) return type;
 
         // Try in referenced assemblies
-        foreach (var assemblyName in _assembly.GetReferencedAssemblies())
+        foreach (var sourceAssembly in _sourceAssemblies)
         {
-            try
+            foreach (var assemblyName in sourceAssembly.GetReferencedAssemblies())
             {
-                var refAssembly = _loadContext.LoadFromAssemblyName(assemblyName);
-                type = refAssembly.GetType(fullName);
-                if (type != null) return type;
+                try
+                {
+                    var refAssembly = _loadContext.LoadFromAssemblyName(assemblyName);
+                    type = refAssembly.GetType(fullName);
+                    if (type != null) return type;
+                }
+                catch { }
             }
-            catch { }
         }
 
         return null;

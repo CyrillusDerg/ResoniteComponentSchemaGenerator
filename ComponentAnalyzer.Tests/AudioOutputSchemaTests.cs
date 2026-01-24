@@ -154,8 +154,9 @@ public class AudioOutputSchemaTests
     {
         var enumDef = _defs["AudioTypeGroup_value"]?.AsObject();
         Assert.NotNull(enumDef);
-        Assert.Equal("string", enumDef["properties"]?["$type"]?["const"]?.GetValue<string>());
+        Assert.Equal("enum", enumDef["properties"]?["$type"]?["const"]?.GetValue<string>());
         Assert.Equal("string", enumDef["properties"]?["value"]?["type"]?.GetValue<string>());
+        Assert.Equal("AudioTypeGroup", enumDef["properties"]?["enumType"]?["const"]?.GetValue<string>());
 
         var enumValues = enumDef["properties"]?["value"]?["enum"]?.AsArray();
         Assert.NotNull(enumValues);

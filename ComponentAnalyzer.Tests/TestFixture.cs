@@ -13,21 +13,33 @@ public class TestFixture : IDisposable
     public JsonSchemaGenerator SchemaGenerator { get; }
 
     // Default path - can be overridden via environment variable
-    private static readonly string DefaultDllPath = @"F:\Steam\steamapps\common\Resonite\FrooxEngine.dll";
+    private static readonly string DefaultResonitePath = @"F:\Steam\steamapps\common\Resonite";
 
     public TestFixture()
     {
-        var dllPath = Environment.GetEnvironmentVariable("FROOXENGINE_DLL_PATH") ?? DefaultDllPath;
-
-        if (!File.Exists(dllPath))
+        // Support both RESONITE_PATH (directory) and FROOXENGINE_DLL_PATH (file) for backwards compatibility
+        var resonitePath = Environment.GetEnvironmentVariable("RESONITE_PATH");
+        if (string.IsNullOrEmpty(resonitePath))
         {
-            throw new FileNotFoundException(
-                $"FrooxEngine.dll not found at '{dllPath}'. " +
-                "Set the FROOXENGINE_DLL_PATH environment variable to the correct path.");
+            var dllPath = Environment.GetEnvironmentVariable("FROOXENGINE_DLL_PATH");
+            if (!string.IsNullOrEmpty(dllPath))
+            {
+                resonitePath = Path.GetDirectoryName(dllPath);
+            }
+        }
+        resonitePath ??= DefaultResonitePath;
+
+        var frooxEnginePath = Path.Combine(resonitePath, "FrooxEngine.dll");
+        if (!Directory.Exists(resonitePath) || !File.Exists(frooxEnginePath))
+        {
+            throw new DirectoryNotFoundException(
+                $"Resonite installation not found at '{resonitePath}'. " +
+                "Set the RESONITE_PATH environment variable to the Resonite directory, " +
+                "or FROOXENGINE_DLL_PATH to the path of FrooxEngine.dll.");
         }
 
-        Loader = ComponentLoader.Load(dllPath);
-        GenericResolver = GenericTypeResolver.TryCreate(dllPath);
+        Loader = ComponentLoader.Load(resonitePath);
+        GenericResolver = GenericTypeResolver.TryCreate(resonitePath);
         SchemaGenerator = new JsonSchemaGenerator(Loader, GenericResolver);
     }
 

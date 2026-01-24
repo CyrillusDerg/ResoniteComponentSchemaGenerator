@@ -15,6 +15,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             dotnet-sdk_10
+            nodejs  # For npx ajv-cli for schema validation
           ];
 
           DOTNET_CLI_TELEMETRY_OPTOUT = "1";

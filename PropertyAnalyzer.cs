@@ -112,7 +112,7 @@ public static class PropertyAnalyzer
         }
 
         string[] syncWrapperTypes = ["Sync", "SyncRef", "SyncList", "SyncRefList", "SyncAssetList",
-                                      "AssetRef", "FieldDrive", "RelayRef", "DestroyRelayRef"];
+                                      "AssetRef", "FieldDrive", "DriveRef", "RelayRef", "DestroyRelayRef"];
 
         return syncWrapperTypes.Contains(typeName);
     }

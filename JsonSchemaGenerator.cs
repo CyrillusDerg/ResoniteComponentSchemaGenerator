@@ -29,12 +29,259 @@ public class JsonSchemaGenerator
             }
         }
 
+        // For generic type definitions without known allowed types, generate a flexible schema
+        if (componentType.IsGenericTypeDefinition)
+        {
+            return GenerateFlexibleGenericSchema(componentType);
+        }
+
         return GenerateConcreteSchema(componentType);
+    }
+
+    /// <summary>
+    /// Generates a flexible schema for generic type definitions that don't have a [GenericTypes] attribute.
+    /// Uses patterns instead of const values to allow any valid instantiation.
+    /// </summary>
+    private JsonObject GenerateFlexibleGenericSchema(Type genericTypeDefinition)
+    {
+        string baseName = GetBaseTypeName(genericTypeDefinition);
+        string assemblyPrefix = GetAssemblyPrefix(genericTypeDefinition);
+        string ns = genericTypeDefinition.Namespace ?? "";
+
+        // Create a pattern that matches any instantiation: [Assembly]Namespace.TypeName<...>
+        // Escape regex special characters in the type name and namespace
+        string escapedAssemblyPrefix = EscapeForJsonRegex(assemblyPrefix);
+        string escapedNamespace = EscapeForJsonRegex(ns);
+        string escapedBaseName = EscapeForJsonRegex(baseName);
+        string componentTypePattern = $"^{escapedAssemblyPrefix}{escapedNamespace}\\.{escapedBaseName}<.+>$";
+
+        // Collect type definitions needed for this schema
+        var typeDefsNeeded = new Dictionary<string, Type>();
+        var membersSchema = GenerateFlexibleMembersSchema(genericTypeDefinition, typeDefsNeeded);
+
+        var schema = new JsonObject
+        {
+            ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
+            ["$id"] = $"{genericTypeDefinition.FullName}.schema.json",
+            ["title"] = baseName,
+            ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} (generic type - accepts any valid type argument)",
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["componentType"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["pattern"] = componentTypePattern,
+                    ["description"] = $"The component type in Resonite notation (e.g., {assemblyPrefix}{ns}.{baseName}<[FrooxEngine]FrooxEngine.Slot>)"
+                },
+                ["members"] = membersSchema,
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+        };
+
+        // Add $defs if we have type definitions
+        if (typeDefsNeeded.Count > 0)
+        {
+            var defs = new JsonObject();
+            foreach (var (typeDefName, type) in typeDefsNeeded.OrderBy(kvp => kvp.Key))
+            {
+                var typeDef = GenerateTypeValueDefinitionFromType(type);
+                if (typeDef != null)
+                {
+                    defs[typeDefName] = typeDef;
+                }
+            }
+            schema["$defs"] = defs;
+        }
+
+        return schema;
+    }
+
+    /// <summary>
+    /// Generates members schema for generic type definitions, using flexible patterns for generic type references.
+    /// </summary>
+    private JsonObject GenerateFlexibleMembersSchema(Type genericTypeDefinition, Dictionary<string, Type> typeDefsNeeded)
+    {
+        var membersSchema = new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "Component members (fields) and their values",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject()
+        };
+
+        var properties = (JsonObject)membersSchema["properties"]!;
+
+        var allFields = PropertyAnalyzer.GetAllSerializableFields(genericTypeDefinition);
+
+        foreach (var field in allFields.OrderBy(f => f.Name))
+        {
+            try
+            {
+                var fieldSchema = GenerateFlexibleMemberSchema(field, typeDefsNeeded);
+                properties[field.Name] = fieldSchema;
+            }
+            catch
+            {
+                properties[field.Name] = new JsonObject
+                {
+                    ["additionalProperties"] = false,
+                    ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
+                };
+            }
+        }
+
+        return membersSchema;
+    }
+
+    /// <summary>
+    /// Generates a member schema that handles generic type parameters flexibly.
+    /// </summary>
+    private JsonObject GenerateFlexibleMemberSchema(ComponentField field, Dictionary<string, Type> typeDefsNeeded)
+    {
+        string wrapperType = GetWrapperTypeName(field.FieldType);
+        Type innerType = UnwrapFrooxEngineType(field.FieldType);
+
+        // Check if the inner type contains a generic type parameter
+        bool hasGenericParameter = ContainsGenericParameter(innerType);
+
+        if (hasGenericParameter)
+        {
+            // For types containing generic parameters, use a flexible reference schema
+            return wrapperType switch
+            {
+                "SyncRef" or "RelayRef" or "DestroyRelayRef" => GenerateFlexibleReferenceSchema(field, innerType),
+                "AssetRef" => GenerateFlexibleAssetRefSchema(field, innerType),
+                "FieldDrive" => GenerateFlexibleFieldDriveSchema(field, innerType),
+                _ => GenerateFieldSchema(field, innerType, true, typeDefsNeeded)
+            };
+        }
+
+        // No generic parameters, use standard schema generation
+        return GenerateMemberSchema(field, true, typeDefsNeeded);
+    }
+
+    /// <summary>
+    /// Checks if a type contains any generic type parameters.
+    /// </summary>
+    private static bool ContainsGenericParameter(Type type)
+    {
+        if (type.IsGenericParameter)
+            return true;
+
+        if (type.IsGenericType)
+        {
+            foreach (var arg in type.GetGenericArguments())
+            {
+                if (ContainsGenericParameter(arg))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Generates a flexible reference schema that accepts any targetType matching the pattern.
+    /// </summary>
+    private JsonObject GenerateFlexibleReferenceSchema(ComponentField field, Type targetType)
+    {
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Reference to {PropertyAnalyzer.GetFriendlyTypeName(targetType)} (generic - accepts any valid type instantiation)",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "reference" },
+                ["targetId"] = new JsonObject
+                {
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the target object (null if no target)"
+                },
+                ["targetType"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Type of the target (with concrete type argument)"
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    /// <summary>
+    /// Generates a flexible asset ref schema that accepts any targetType matching the pattern.
+    /// </summary>
+    private JsonObject GenerateFlexibleAssetRefSchema(ComponentField field, Type assetType)
+    {
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Asset reference to {PropertyAnalyzer.GetFriendlyTypeName(assetType)} (generic - accepts any valid type instantiation)",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "reference" },
+                ["targetId"] = new JsonObject
+                {
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the asset (null if no target)"
+                },
+                ["targetType"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Type of the asset provider (with concrete type argument)"
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    /// <summary>
+    /// Generates a flexible field drive schema that accepts any targetType matching the pattern.
+    /// </summary>
+    private JsonObject GenerateFlexibleFieldDriveSchema(ComponentField field, Type drivenType)
+    {
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Field drive targeting {PropertyAnalyzer.GetFriendlyTypeName(drivenType)} (generic - accepts any valid type instantiation)",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "reference" },
+                ["targetId"] = new JsonObject
+                {
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the target field to drive (null if no target)"
+                },
+                ["targetType"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Type of the driven field (with concrete type argument)"
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
     }
 
     private JsonObject GenerateConcreteSchema(Type componentType)
     {
-        string componentTypeName = $"[FrooxEngine]{componentType.FullName}";
+        string componentTypeName = $"{GetAssemblyPrefix(componentType)}{componentType.FullName}";
 
         // Collect type definitions needed for this schema (maps def name to Type)
         var typeDefsNeeded = new Dictionary<string, Type>();
@@ -229,7 +476,7 @@ public class JsonSchemaGenerator
         // For nullable types, append ? to the type name
         string schemaTypeName = isNullable ? $"{resoniteLinkType}?" : resoniteLinkType;
 
-        // Handle enums specially - they need their enum values
+        // Handle enums specially - they use $type: "enum" with enumType property
         if (underlyingType.IsEnum)
         {
             var valueSchema = new JsonObject { ["type"] = "string" };
@@ -256,8 +503,14 @@ public class JsonSchemaGenerator
                 ["additionalProperties"] = false,
                 ["properties"] = new JsonObject
                 {
-                    ["$type"] = new JsonObject { ["const"] = isNullable ? "string?" : "string" },
+                    ["$type"] = new JsonObject { ["const"] = isNullable ? "enum?" : "enum" },
                     ["value"] = valueSchema,
+                    ["enumType"] = new JsonObject
+                    {
+                        ["type"] = "string",
+                        ["const"] = underlyingType.Name,
+                        ["description"] = "The enum type name"
+                    },
                     ["id"] = new JsonObject { ["type"] = "string" }
                 },
                 ["required"] = new JsonArray { "$type", "id" }
@@ -354,7 +607,7 @@ public class JsonSchemaGenerator
             "char" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["maxLength"] = 1 },
             "DateTime" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["format"] = "date-time" },
             "TimeSpan" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
-            "Uri" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["format"] = "uri" },
+            "Uri" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },  // URI stored as string
             _ => null
         };
 
@@ -447,7 +700,7 @@ public class JsonSchemaGenerator
             "char" => new JsonObject { ["type"] = "string", ["maxLength"] = 1 },
             "DateTime" => new JsonObject { ["type"] = "string", ["format"] = "date-time" },
             "TimeSpan" => new JsonObject { ["type"] = "string" },
-            "Uri" => new JsonObject { ["type"] = "string", ["format"] = "uri" },
+            "Uri" => new JsonObject { ["type"] = "string" },  // URI stored as string
             _ => null
         };
 
@@ -468,14 +721,15 @@ public class JsonSchemaGenerator
 
     private static string FormatGenericComponentTypeName(Type concreteType)
     {
-        // Format: [FrooxEngine]FrooxEngine.AssetLoader<[FrooxEngine]FrooxEngine.LocaleResource>
+        // Format: [ProtoFluxBindings]FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.ObjectRelay<[FrooxEngine]FrooxEngine.Slot>
         var genericDef = concreteType.GetGenericTypeDefinition();
         var typeArgs = concreteType.GetGenericArguments();
 
         // Use full ResoniteLink notation for type arguments
         var typeArgStrings = typeArgs.Select(FormatResoniteLinkTypeName);
 
-        return $"[FrooxEngine]{genericDef.Namespace}.{GetBaseTypeName(genericDef)}<{string.Join(",", typeArgStrings)}>";
+        string assemblyPrefix = GetAssemblyPrefix(genericDef);
+        return $"{assemblyPrefix}{genericDef.Namespace}.{GetBaseTypeName(genericDef)}<{string.Join(",", typeArgStrings)}>";
     }
 
     /// <summary>
@@ -634,6 +888,7 @@ public class JsonSchemaGenerator
             "SyncRef" or "RelayRef" or "DestroyRelayRef" => GenerateReferenceSchema(field, innerType),
             "AssetRef" => GenerateAssetRefSchema(field, innerType),
             "FieldDrive" => GenerateFieldDriveSchema(field, innerType),
+            "DriveRef" => GenerateDriveRefSchema(field, innerType),
             _ => GenerateFieldSchema(field, innerType, useRefs, typeDefsNeeded)
         };
     }
@@ -813,8 +1068,8 @@ public class JsonSchemaGenerator
                 ["$type"] = new JsonObject { ["const"] = "reference" },
                 ["targetId"] = new JsonObject
                 {
-                    ["type"] = "string",
-                    ["description"] = "ID of the target object"
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the target object (null if no target)"
                 },
                 ["targetType"] = new JsonObject
                 {
@@ -844,8 +1099,8 @@ public class JsonSchemaGenerator
                 ["$type"] = new JsonObject { ["const"] = "reference" },
                 ["targetId"] = new JsonObject
                 {
-                    ["type"] = "string",
-                    ["description"] = "ID of the asset"
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the asset (null if no target)"
                 },
                 ["targetType"] = new JsonObject
                 {
@@ -860,26 +1115,57 @@ public class JsonSchemaGenerator
 
     private JsonObject GenerateFieldDriveSchema(ComponentField field, Type drivenType)
     {
-        // Format the driven type in ResoniteLink notation
+        // FieldDrive<T> targets IField<T>
+        // Format: [FrooxEngine]FrooxEngine.IField<float3>
         string formattedDrivenType = FormatResoniteLinkTypeName(drivenType);
+        string targetType = $"[FrooxEngine]FrooxEngine.IField<{formattedDrivenType}>";
 
         return new JsonObject
         {
             ["type"] = "object",
             ["additionalProperties"] = false,
-            ["description"] = $"Field drive targeting {PropertyAnalyzer.GetFriendlyTypeName(drivenType)}",
+            ["description"] = $"Field drive targeting IField<{PropertyAnalyzer.GetFriendlyTypeName(drivenType)}>",
             ["properties"] = new JsonObject
             {
                 ["$type"] = new JsonObject { ["const"] = "reference" },
                 ["targetId"] = new JsonObject
                 {
-                    ["type"] = "string",
-                    ["description"] = "ID of the target field to drive"
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the target field to drive (null if no target)"
                 },
                 ["targetType"] = new JsonObject
                 {
-                    ["const"] = formattedDrivenType,
+                    ["const"] = targetType,
                     ["description"] = "Type of the driven field"
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    private JsonObject GenerateDriveRefSchema(ComponentField field, Type targetType)
+    {
+        // DriveRef<T> directly references T (not IField<T>)
+        string formattedTargetType = FormatResoniteLinkTypeName(targetType);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Drive reference to {PropertyAnalyzer.GetFriendlyTypeName(targetType)}",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "reference" },
+                ["targetId"] = new JsonObject
+                {
+                    ["type"] = new JsonArray { "string", "null" },
+                    ["description"] = "ID of the target object (null if no target)"
+                },
+                ["targetType"] = new JsonObject
+                {
+                    ["const"] = formattedTargetType,
+                    ["description"] = "Type of the target"
                 },
                 ["id"] = new JsonObject { ["type"] = "string" }
             },
@@ -980,7 +1266,7 @@ public class JsonSchemaGenerator
                         ["properties"] = new JsonObject
                         {
                             ["$type"] = new JsonObject { ["const"] = "reference" },
-                            ["targetId"] = new JsonObject { ["type"] = "string" },
+                            ["targetId"] = new JsonObject { ["type"] = new JsonArray { "string", "null" } },
                             ["targetType"] = new JsonObject { ["type"] = "string" },
                             ["id"] = new JsonObject { ["type"] = "string" }
                         },
@@ -1010,7 +1296,7 @@ public class JsonSchemaGenerator
 
         string typeName = GetWrapperTypeName(type);
 
-        string[] wrapperTypes = ["Sync", "FieldDrive", "AssetRef", "SyncRef", "RelayRef",
+        string[] wrapperTypes = ["Sync", "FieldDrive", "DriveRef", "AssetRef", "SyncRef", "RelayRef",
                                   "DestroyRelayRef", "SyncList", "SyncRefList", "SyncAssetList"];
 
         if (wrapperTypes.Contains(typeName))
@@ -1108,6 +1394,20 @@ public class JsonSchemaGenerator
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Escapes a string for use in a JSON Schema regex pattern.
+    /// This properly escapes all regex special characters including brackets.
+    /// </summary>
+    private static string EscapeForJsonRegex(string input)
+    {
+        // Regex.Escape handles most special characters but we need to ensure
+        // all brackets are properly escaped for JSON Schema regex
+        var escaped = System.Text.RegularExpressions.Regex.Escape(input);
+        // Ensure closing bracket is escaped (Regex.Escape doesn't escape ] on its own)
+        escaped = escaped.Replace("]", "\\]");
+        return escaped;
     }
 
     private static bool IsVectorType(string typeName, out int dimensions)
