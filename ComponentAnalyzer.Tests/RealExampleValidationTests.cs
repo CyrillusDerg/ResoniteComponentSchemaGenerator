@@ -37,6 +37,8 @@ public class RealExampleValidationTests
     [InlineData("FrooxEngine.UI_UnlitMaterial", "FrooxEngine.UI_UnlitMaterial_example.json")]
     [InlineData("FrooxEngine.TrackedDevicePositioner", "FrooxEngine.TrackedDevicePositioner_example.json")]
     [InlineData("FrooxEngine.ItemShelf", "FrooxEngine.ItemShelf_example.json")]
+    [InlineData("FrooxEngine.SkinnedMeshRenderer", "FrooxEngine.SkinnedMeshRenderer_example.json")]
+    [InlineData("FrooxEngine.VisemeAnalyzer", "FrooxEngine.VisemeAnalyzer_example.json")]
     public void Schema_ValidatesRealExample(string componentName, string exampleFileName)
     {
         // Find the component type
@@ -214,30 +216,6 @@ public class RealExampleValidationTests
         var trueValue = members["TrueValue"]?.AsObject();
         Assert.NotNull(trueValue);
         Assert.Equal("float2", trueValue["$type"]?.GetValue<string>());
-    }
-
-    [Fact]
-    public void SkinnedMeshRenderer_ValidatesRealExample()
-    {
-        // This is a generic FrooxEngine component with FieldDrive member
-        var componentType = _fixture.Loader.FindComponent("SkinnedMeshRenderer");
-        Assert.NotNull(componentType);
-
-        // Generate schema
-        var schema = _fixture.SchemaGenerator.GenerateSchema(componentType);
-        var schemaJson = _fixture.SchemaGenerator.SerializeSchema(schema);
-
-        // Load example
-        var examplePath = Path.Combine(ExamplesPath, "FrooxEngine.SkinnedMeshRenderer_example.json");
-        Assert.True(File.Exists(examplePath), $"Example file not found: {examplePath}");
-        var exampleJson = File.ReadAllText(examplePath);
-
-        // Validate using SchemaValidator
-        var validator = CreateValidatorWithCommonSchema();
-        var result = validator.ValidateJson(exampleJson, schemaJson);
-
-        Assert.True(result.IsValid,
-            $"Validation failed for SkinnedMeshRenderer:\n{string.Join("\n", result.Errors)}");
     }
 
     [Fact]
