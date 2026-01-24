@@ -6,6 +6,12 @@ if (args.Length == 0 || args[0] == "-h" || args[0] == "--help")
     return args.Length == 0 ? 1 : 0;
 }
 
+// Handle validation mode separately (doesn't require Resonite path)
+if (args[0] == "-v" || args[0] == "--validate")
+{
+    return HandleValidation(args);
+}
+
 string resonitePath = args[0];
 string? filterPattern = null;
 string? propsForClass = null;
@@ -422,15 +428,127 @@ static int ShowProperties(ComponentLoader loader, GenericTypeResolver? genericRe
     return 0;
 }
 
+static int HandleValidation(string[] args)
+{
+    string? jsonFile = null;
+    string? schemaFile = null;
+    string? schemaDir = null;
+
+    for (int i = 1; i < args.Length; i++)
+    {
+        switch (args[i])
+        {
+            case "--schema":
+                if (i + 1 < args.Length)
+                {
+                    schemaFile = args[++i];
+                }
+                else
+                {
+                    Console.WriteLine("Error: --schema requires a schema file path");
+                    return 1;
+                }
+                break;
+            case "--schema-dir":
+                if (i + 1 < args.Length)
+                {
+                    schemaDir = args[++i];
+                }
+                else
+                {
+                    Console.WriteLine("Error: --schema-dir requires a directory path");
+                    return 1;
+                }
+                break;
+            case "-h":
+            case "--help":
+                PrintUsage();
+                return 0;
+            default:
+                if (args[i].StartsWith('-'))
+                {
+                    Console.WriteLine($"Unknown option: {args[i]}");
+                    return 1;
+                }
+                // Positional argument - assume it's the JSON file
+                if (jsonFile == null)
+                {
+                    jsonFile = args[i];
+                }
+                else
+                {
+                    Console.WriteLine($"Unexpected argument: {args[i]}");
+                    return 1;
+                }
+                break;
+        }
+    }
+
+    if (jsonFile == null)
+    {
+        Console.WriteLine("Error: JSON file path is required");
+        Console.WriteLine("Usage: ComponentAnalyzer -v <json-file> --schema <schema-file> [--schema-dir <dir>]");
+        return 1;
+    }
+
+    if (schemaFile == null)
+    {
+        Console.WriteLine("Error: --schema is required for validation");
+        Console.WriteLine("Usage: ComponentAnalyzer -v <json-file> --schema <schema-file> [--schema-dir <dir>]");
+        return 1;
+    }
+
+    if (!File.Exists(jsonFile))
+    {
+        Console.WriteLine($"Error: JSON file not found: {jsonFile}");
+        return 1;
+    }
+
+    if (!File.Exists(schemaFile))
+    {
+        Console.WriteLine($"Error: Schema file not found: {schemaFile}");
+        return 1;
+    }
+
+    try
+    {
+        var validator = new SchemaValidator();
+        var result = validator.ValidateWithCommonSchema(jsonFile, schemaFile, schemaDir);
+
+        if (result.IsValid)
+        {
+            Console.WriteLine($"Valid: {Path.GetFileName(jsonFile)}");
+            return 0;
+        }
+        else
+        {
+            Console.WriteLine($"Invalid: {Path.GetFileName(jsonFile)}");
+            Console.WriteLine();
+            Console.WriteLine("Errors:");
+            foreach (var error in result.Errors)
+            {
+                Console.WriteLine($"  {error}");
+            }
+            return 1;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error during validation: {ex.Message}");
+        return 1;
+    }
+}
+
 static void PrintUsage()
 {
     Console.WriteLine("Usage: ComponentAnalyzer <resonite-directory> [options]");
+    Console.WriteLine("       ComponentAnalyzer -v <json-file> --schema <schema-file> [--schema-dir <dir>]");
     Console.WriteLine();
     Console.WriteLine("Arguments:");
     Console.WriteLine("  <resonite-directory>   Path to Resonite installation directory containing");
     Console.WriteLine("                         FrooxEngine.dll (or direct path to FrooxEngine.dll)");
     Console.WriteLine();
-    Console.WriteLine("Options:");
+    Console.WriteLine("Schema Generation Options:");
     Console.WriteLine("  -l, --list [pattern]   List components, optionally filtered by pattern");
     Console.WriteLine("  -p, --props <class>    Show public fields of a component");
     Console.WriteLine("  -s, --schema [class]   Generate JSON schema (for specific class or all)");
@@ -440,6 +558,13 @@ static void PrintUsage()
     Console.WriteLine("  -d, --debug <class>    Show debug info (all members, generic constraints)");
     Console.WriteLine("  --components-only      Only load FrooxEngine components (exclude ProtoFlux)");
     Console.WriteLine("  --protoflux-only       Only load ProtoFlux nodes");
+    Console.WriteLine();
+    Console.WriteLine("Validation Options:");
+    Console.WriteLine("  -v, --validate         Validate a JSON file against a schema");
+    Console.WriteLine("      --schema <file>    Schema file to validate against (required with -v)");
+    Console.WriteLine("      --schema-dir <dir> Directory containing schemas for $ref resolution");
+    Console.WriteLine();
+    Console.WriteLine("General Options:");
     Console.WriteLine("  -h, --help             Show this help message");
     Console.WriteLine();
     Console.WriteLine("Examples:");
@@ -452,4 +577,8 @@ static void PrintUsage()
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas --protoflux-only");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -c -o ./schemas  # Generate common.schema.json only");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -d \"AssetLoader<1>\"");
+    Console.WriteLine();
+    Console.WriteLine("  # Validate a component JSON file against its schema");
+    Console.WriteLine("  ComponentAnalyzer -v component.json --schema FrooxEngine.AudioOutput.schema.json");
+    Console.WriteLine("  ComponentAnalyzer -v component.json --schema schema.json --schema-dir ./schemas");
 }

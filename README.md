@@ -17,6 +17,7 @@ A .NET tool that analyzes FrooxEngine.dll and generates JSON Schema files for Re
 - Schemas use `$ref` and a common schema for shared type definitions to reduce duplication
 - All member values include required `id` field for ResoniteLink compatibility
 - Component schemas include required `id` and `isReferenceOnly` fields
+- Validate component JSON files against generated schemas using JsonSchema.Net
 
 ## Requirements
 
@@ -76,14 +77,22 @@ The tests verify:
 
 ```txt
 ComponentAnalyzer <path-to-DLL> [options]
+ComponentAnalyzer -v <json-file> --schema <schema-file> [--schema-dir <dir>]
 
-Options:
+Schema Generation Options:
   -l, --list [pattern]   List components, optionally filtered by pattern
   -p, --props <class>    Show public fields of a component
   -s, --schema [class]   Generate JSON schema (for specific class or all)
                          Automatically generates common.schema.json with shared type defs
   -c, --common           Generate only common.schema.json (no component schemas)
   -o, --output <dir>     Output directory for schema files (default: current)
+
+Validation Options:
+  -v, --validate         Validate a JSON file against a schema
+      --schema <file>    Schema file to validate against (required with -v)
+      --schema-dir <dir> Directory containing schemas for $ref resolution
+
+General Options:
   -h, --help             Show this help message
 ```
 
@@ -171,6 +180,36 @@ dotnet run -- /path/to/FrooxEngine.dll -s AudioOutput -o ./schemas
 
 ```bash
 dotnet run -- /path/to/FrooxEngine.dll -s -o ./schemas
+```
+
+### Validate a component JSON file
+
+Validate a component JSON file against its schema:
+
+```bash
+dotnet run -- -v component.json --schema ./schemas/FrooxEngine.AudioOutput.schema.json
+```
+
+If the schema references `common.schema.json` via `$ref`, specify the schema directory:
+
+```bash
+dotnet run -- -v component.json --schema ./schemas/FrooxEngine.AudioOutput.schema.json --schema-dir ./schemas
+```
+
+Output for valid files:
+
+```txt
+Valid: component.json
+```
+
+Output for invalid files:
+
+```txt
+Invalid: component.json
+
+Errors:
+  /componentType: const - Expected "[FrooxEngine]FrooxEngine.AudioOutput"
+  : required - Required properties ["isReferenceOnly"] are not present
 ```
 
 ## Schema Format
