@@ -111,7 +111,7 @@ public static class PropertyAnalyzer
             typeName = typeName[..backtickIndex];
         }
 
-        string[] syncWrapperTypes = ["Sync", "SyncRef", "SyncList", "SyncRefList", "SyncAssetList",
+        string[] syncWrapperTypes = ["Sync", "SyncRef", "SyncList", "SyncRefList", "SyncAssetList", "SyncFieldList",
                                       "AssetRef", "FieldDrive", "DriveRef", "RelayRef", "DestroyRelayRef"];
 
         return syncWrapperTypes.Contains(typeName);

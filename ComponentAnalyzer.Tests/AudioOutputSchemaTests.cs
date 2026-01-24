@@ -99,7 +99,7 @@ public class AudioOutputSchemaTests
     {
         var excludedListeners = _members["ExcludedListeners"]?.AsObject();
         Assert.NotNull(excludedListeners);
-        Assert.Equal("syncList", excludedListeners["properties"]?["$type"]?["const"]?.GetValue<string>());
+        Assert.Equal("list", excludedListeners["properties"]?["$type"]?["const"]?.GetValue<string>());
         Assert.Equal("array", excludedListeners["properties"]?["elements"]?["type"]?.GetValue<string>());
     }
 
