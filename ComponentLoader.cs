@@ -3,38 +3,84 @@ using System.Runtime.InteropServices;
 
 namespace ComponentAnalyzer;
 
+/// <summary>
+/// Specifies which assemblies to load components from.
+/// </summary>
+[Flags]
+public enum AssemblySource
+{
+    /// <summary>Load components from FrooxEngine.dll only.</summary>
+    FrooxEngine = 1,
+
+    /// <summary>Load ProtoFlux nodes from ProtoFluxBindings.dll.</summary>
+    ProtoFluxBindings = 2,
+
+    /// <summary>Load from all supported assemblies.</summary>
+    All = FrooxEngine | ProtoFluxBindings
+}
+
 public class ComponentLoader : IDisposable
 {
     private readonly MetadataLoadContext _mlc;
-    private readonly Assembly _assembly;
+    private readonly Assembly _primaryAssembly;
+    private readonly List<Assembly> _sourceAssemblies;
     private readonly Type _componentType;
     private readonly List<Type> _derivedTypes;
+    private readonly string _resoniteDirectory;
 
     public IReadOnlyList<Type> DerivedTypes => _derivedTypes;
     public Type ComponentType => _componentType;
+    public string ResoniteDirectory => _resoniteDirectory;
 
-    private ComponentLoader(MetadataLoadContext mlc, Assembly assembly, Type componentType, List<Type> derivedTypes)
+    private ComponentLoader(
+        MetadataLoadContext mlc,
+        Assembly primaryAssembly,
+        List<Assembly> sourceAssemblies,
+        Type componentType,
+        List<Type> derivedTypes,
+        string resoniteDirectory)
     {
         _mlc = mlc;
-        _assembly = assembly;
+        _primaryAssembly = primaryAssembly;
+        _sourceAssemblies = sourceAssemblies;
         _componentType = componentType;
         _derivedTypes = derivedTypes;
+        _resoniteDirectory = resoniteDirectory;
     }
 
-    public static ComponentLoader Load(string dllPath)
+    /// <summary>
+    /// Loads components from the specified Resonite installation directory.
+    /// </summary>
+    /// <param name="resoniteDirectory">Path to the Resonite installation directory containing FrooxEngine.dll.</param>
+    /// <param name="sources">Which assemblies to load components from.</param>
+    public static ComponentLoader Load(string resoniteDirectory, AssemblySource sources = AssemblySource.All)
     {
-        if (!File.Exists(dllPath))
+        // Support both directory path and direct DLL path for backwards compatibility
+        string directory;
+        if (File.Exists(resoniteDirectory) && resoniteDirectory.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
         {
-            throw new FileNotFoundException($"File not found: {dllPath}");
+            directory = Path.GetDirectoryName(Path.GetFullPath(resoniteDirectory)) ?? ".";
+        }
+        else if (Directory.Exists(resoniteDirectory))
+        {
+            directory = Path.GetFullPath(resoniteDirectory);
+        }
+        else
+        {
+            throw new DirectoryNotFoundException($"Directory not found: {resoniteDirectory}");
         }
 
-        string dllDirectory = Path.GetDirectoryName(Path.GetFullPath(dllPath)) ?? ".";
+        string frooxEnginePath = Path.Combine(directory, "FrooxEngine.dll");
+        if (!File.Exists(frooxEnginePath))
+        {
+            throw new FileNotFoundException($"FrooxEngine.dll not found in: {directory}");
+        }
 
         // Get runtime assemblies for resolving base types
         string[] runtimeAssemblies = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
 
-        // Get all DLLs in the same directory as the target DLL
-        string[] localAssemblies = Directory.GetFiles(dllDirectory, "*.dll");
+        // Get all DLLs in the Resonite directory
+        string[] localAssemblies = Directory.GetFiles(directory, "*.dll");
 
         // Combine all assembly paths
         var allPaths = runtimeAssemblies.Concat(localAssemblies).Distinct().ToList();
@@ -44,42 +90,60 @@ public class ComponentLoader : IDisposable
 
         try
         {
-            Assembly assembly = mlc.LoadFromAssemblyPath(Path.GetFullPath(dllPath));
+            // Always load FrooxEngine.dll as the primary assembly (contains Component base type)
+            Assembly primaryAssembly = mlc.LoadFromAssemblyPath(frooxEnginePath);
 
             // Find the Component base class
-            Type? componentType = assembly.GetType("FrooxEngine.Component");
-
+            Type? componentType = primaryAssembly.GetType("FrooxEngine.Component");
             if (componentType == null)
             {
                 mlc.Dispose();
                 throw new InvalidOperationException("Could not find FrooxEngine.Component type in the assembly.");
             }
 
-            // Get all types, handling loading errors gracefully
-            Type[] types = GetLoadableTypes(assembly);
+            // Determine which assemblies to scan for components
+            var sourceAssemblies = new List<Assembly>();
+            if (sources.HasFlag(AssemblySource.FrooxEngine))
+            {
+                sourceAssemblies.Add(primaryAssembly);
+            }
+            if (sources.HasFlag(AssemblySource.ProtoFluxBindings))
+            {
+                string protoFluxBindingsPath = Path.Combine(directory, "ProtoFluxBindings.dll");
+                if (File.Exists(protoFluxBindingsPath))
+                {
+                    var protoFluxBindings = mlc.LoadFromAssemblyPath(protoFluxBindingsPath);
+                    sourceAssemblies.Add(protoFluxBindings);
+                }
+            }
 
-            // Find all types that derive from Component
+            // Find all types that derive from Component across all source assemblies
             var derivedTypes = new List<Type>();
 
-            foreach (Type type in types)
+            foreach (var assembly in sourceAssemblies)
             {
-                try
+                Type[] types = GetLoadableTypes(assembly);
+
+                foreach (Type type in types)
                 {
-                    if (type != componentType && IsAssignableFrom(componentType, type))
+                    try
                     {
-                        derivedTypes.Add(type);
+                        if (type != componentType && IsAssignableFrom(componentType, type))
+                        {
+                            derivedTypes.Add(type);
+                        }
                     }
-                }
-                catch
-                {
-                    // Skip types that can't be checked
+                    catch
+                    {
+                        // Skip types that can't be checked
+                    }
                 }
             }
 
             // Sort by full name for consistent output
             derivedTypes.Sort((a, b) => string.Compare(a.FullName, b.FullName, StringComparison.Ordinal));
 
-            return new ComponentLoader(mlc, assembly, componentType, derivedTypes);
+            return new ComponentLoader(mlc, primaryAssembly, sourceAssemblies, componentType, derivedTypes, directory);
         }
         catch
         {
@@ -87,6 +151,38 @@ public class ComponentLoader : IDisposable
             throw;
         }
     }
+
+    /// <summary>
+    /// Checks if a type is a ProtoFlux node (derives from ProtoFluxNode).
+    /// </summary>
+    public bool IsProtoFluxNode(Type type)
+    {
+        try
+        {
+            Type? current = type.BaseType;
+            while (current != null)
+            {
+                if (current.FullName == "FrooxEngine.ProtoFlux.ProtoFluxNode")
+                    return true;
+                current = current.BaseType;
+            }
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets only regular components (not ProtoFlux nodes).
+    /// </summary>
+    public IEnumerable<Type> GetComponents() => _derivedTypes.Where(t => !IsProtoFluxNode(t));
+
+    /// <summary>
+    /// Gets only ProtoFlux nodes.
+    /// </summary>
+    public IEnumerable<Type> GetProtoFluxNodes() => _derivedTypes.Where(t => IsProtoFluxNode(t));
 
     public Type? FindComponent(string className)
     {
@@ -190,16 +286,24 @@ public class ComponentLoader : IDisposable
     }
 
     /// <summary>
-    /// Looks up a type by its full name in the loaded assembly or its references.
+    /// Looks up a type by its full name in the loaded assemblies or their references.
     /// </summary>
     public Type? FindTypeByFullName(string fullName)
     {
-        // Try in the main assembly first
-        var type = _assembly.GetType(fullName);
+        // Try in the primary assembly first
+        var type = _primaryAssembly.GetType(fullName);
         if (type != null) return type;
 
+        // Try in other source assemblies
+        foreach (var assembly in _sourceAssemblies)
+        {
+            if (assembly == _primaryAssembly) continue;
+            type = assembly.GetType(fullName);
+            if (type != null) return type;
+        }
+
         // Try in referenced assemblies
-        foreach (var assemblyName in _assembly.GetReferencedAssemblies())
+        foreach (var assemblyName in _primaryAssembly.GetReferencedAssemblies())
         {
             try
             {

@@ -6,13 +6,14 @@ if (args.Length == 0 || args[0] == "-h" || args[0] == "--help")
     return args.Length == 0 ? 1 : 0;
 }
 
-string dllPath = args[0];
+string resonitePath = args[0];
 string? filterPattern = null;
 string? propsForClass = null;
 string? debugClass = null;
 string? schemaClass = null;
 string outputDir = ".";
 bool generateAllSchemas = false;
+AssemblySource sources = AssemblySource.All;
 
 for (int i = 1; i < args.Length; i++)
 {
@@ -76,6 +77,12 @@ for (int i = 1; i < args.Length; i++)
                 return 1;
             }
             break;
+        case "--components-only":
+            sources = AssemblySource.FrooxEngine;
+            break;
+        case "--protoflux-only":
+            sources = AssemblySource.ProtoFluxBindings;
+            break;
         case "-h":
         case "--help":
             PrintUsage();
@@ -89,8 +96,8 @@ for (int i = 1; i < args.Length; i++)
 
 try
 {
-    using var loader = ComponentLoader.Load(dllPath);
-    using var genericResolver = GenericTypeResolver.TryCreate(dllPath);
+    using var loader = ComponentLoader.Load(resonitePath, sources);
+    using var genericResolver = GenericTypeResolver.TryCreate(resonitePath, sources);
 
     if (debugClass != null)
     {
@@ -378,21 +385,29 @@ static int ShowProperties(ComponentLoader loader, GenericTypeResolver? genericRe
 
 static void PrintUsage()
 {
-    Console.WriteLine("Usage: ComponentAnalyzer <path-to-DLL> [options]");
+    Console.WriteLine("Usage: ComponentAnalyzer <resonite-directory> [options]");
+    Console.WriteLine();
+    Console.WriteLine("Arguments:");
+    Console.WriteLine("  <resonite-directory>   Path to Resonite installation directory containing");
+    Console.WriteLine("                         FrooxEngine.dll (or direct path to FrooxEngine.dll)");
     Console.WriteLine();
     Console.WriteLine("Options:");
     Console.WriteLine("  -l, --list [pattern]   List components, optionally filtered by pattern");
     Console.WriteLine("  -p, --props <class>    Show public fields of a component");
-    Console.WriteLine("  -s, --schema <class>   Generate JSON schema (for specific class or all)");
+    Console.WriteLine("  -s, --schema [class]   Generate JSON schema (for specific class or all)");
     Console.WriteLine("  -o, --output <dir>     Output directory for schema files (default: current)");
     Console.WriteLine("  -d, --debug <class>    Show debug info (all members, generic constraints)");
+    Console.WriteLine("  --components-only      Only load FrooxEngine components (exclude ProtoFlux)");
+    Console.WriteLine("  --protoflux-only       Only load ProtoFlux nodes");
     Console.WriteLine("  -h, --help             Show this help message");
     Console.WriteLine();
     Console.WriteLine("Examples:");
-    Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll                       # List all components");
-    Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -l Audio              # List components containing 'Audio'");
-    Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -p AudioOutput        # Show fields of AudioOutput");
-    Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -s AudioOutput        # Generate schema for AudioOutput");
-    Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -s -o ./schemas       # Generate all schemas to ./schemas");
-    Console.WriteLine("  ComponentAnalyzer FrooxEngine.dll -d \"AssetLoader<1>\"   # Debug generic type constraints");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite              # List all components and ProtoFlux nodes");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -l Audio     # List types containing 'Audio'");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -p AudioOutput");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s AudioOutput");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas --components-only");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -s -o ./schemas --protoflux-only");
+    Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -d \"AssetLoader<1>\"");
 }

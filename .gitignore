@@ -3,3 +3,5 @@ obj/
 .DS_STORE
 *.dll
 .claude/
+.direnv/
+.envrc
