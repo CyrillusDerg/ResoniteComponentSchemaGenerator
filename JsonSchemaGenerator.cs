@@ -33,6 +33,7 @@ public class JsonSchemaGenerator
     /// This includes primitives, vectors, quaternions, colors, and matrices.
     /// Enum types are NOT included as they are component-specific.
     /// </summary>
+    /// <returns>The common type JSON schema.</returns>
     public JsonObject GenerateCommonSchema()
     {
         var defs = new JsonObject();
@@ -58,13 +59,15 @@ public class JsonSchemaGenerator
     /// <summary>
     /// Gets all common type definitions (non-enum types).
     /// </summary>
+    /// <returns>A dict from ref name (e.g. nullable_ushort_value) to schema.</returns>
     private Dictionary<string, JsonObject> GetAllCommonTypeDefinitions()
     {
         var result = new Dictionary<string, JsonObject>();
 
         // Primitive types (non-nullable and nullable)
-        string[] primitiveTypes = ["bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong",
-                                   "float", "double", "decimal", "string", "char", "DateTime", "TimeSpan", "Uri"];
+        string[] primitiveTypes = [
+            "bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong",
+            "float", "double", "decimal", "string", "char", "DateTime", "TimeSpan", "Uri"];
 
         foreach (var typeName in primitiveTypes)
         {
@@ -87,8 +90,9 @@ public class JsonSchemaGenerator
         }
 
         // Vector types (2, 3, 4 dimensions)
-        string[] vectorPrefixes = ["float", "double", "int", "uint", "long", "ulong", "short", "ushort",
-                                   "byte", "sbyte", "bool"];
+        string[] vectorPrefixes = [
+            "float", "double", "int", "uint", "long", "ulong", "short", "ushort",
+            "byte", "sbyte", "bool"];
         int[] dimensions = [2, 3, 4];
 
         foreach (var prefix in vectorPrefixes)
@@ -96,24 +100,34 @@ public class JsonSchemaGenerator
             foreach (var dim in dimensions)
             {
                 string typeName = $"{prefix}{dim}";
-                result[$"{typeName}_value"] = GenerateVectorTypeDefinition(typeName, dim, isNullable: false);
-                result[$"nullable_{typeName}_value"] = GenerateVectorTypeDefinition(typeName, dim, isNullable: true);
+                result[$"{typeName}_value"] = GenerateVectorTypeDefinition(
+                    typeName, dim, isNullable: false);
+                result[$"nullable_{typeName}_value"] = GenerateVectorTypeDefinition(
+                    typeName, dim, isNullable: true);
             }
         }
 
         // Quaternion types
-        result["floatQ_value"] = GenerateQuaternionTypeDefinition("floatQ", isNullable: false);
-        result["nullable_floatQ_value"] = GenerateQuaternionTypeDefinition("floatQ", isNullable: true);
-        result["doubleQ_value"] = GenerateQuaternionTypeDefinition("doubleQ", isNullable: false);
-        result["nullable_doubleQ_value"] = GenerateQuaternionTypeDefinition("doubleQ", isNullable: true);
+        string[] quaternionTypes = ["floatQ", "doubleQ"];
+        foreach (var typeName in quaternionTypes)
+        {
+            result[$"{typeName}_value"] = GenerateQuaternionTypeDefinition(
+                typeName, isNullable: false);
+            result[$"nullable_{typeName}_value"] = GenerateQuaternionTypeDefinition(
+                typeName, isNullable: true);
+        }
 
         // Color types
-        result["color_value"] = GenerateColorTypeDefinition("color", isNullable: false, includeProfile: false);
-        result["nullable_color_value"] = GenerateColorTypeDefinition("color", isNullable: true, includeProfile: false);
-        result["colorX_value"] = GenerateColorTypeDefinition("colorX", isNullable: false, includeProfile: true);
-        result["nullable_colorX_value"] = GenerateColorTypeDefinition("colorX", isNullable: true, includeProfile: true);
-        result["color32_value"] = GenerateColor32TypeDefinition("color32", isNullable: false);
-        result["nullable_color32_value"] = GenerateColor32TypeDefinition("color32", isNullable: true);
+        string [] colorTypes = ["color", "colorX", "color32"];
+        foreach (var typeName in colorTypes)
+        {
+            var includeProfile = (typeName is "colorX");
+            result[$"{typeName}_value"] = GenerateColorTypeDefinition(
+                typeName, isNullable: false, includeProfile: includeProfile);
+            result[$"nullable_{typeName}_value"] = GenerateColorTypeDefinition(
+                typeName, isNullable: true, includeProfile: inclueProfile);
+
+        }
 
         // Matrix types
         string[] matrixPrefixes = ["float", "double"];
@@ -125,8 +139,10 @@ public class JsonSchemaGenerator
             {
                 string typeName = $"{prefix}{size}";
                 int dim = size[0] - '0'; // Extract dimension from "2x2", "3x3", "4x4"
-                result[$"{typeName}_value"] = GenerateMatrixTypeDefinition(typeName, dim, isNullable: false);
-                result[$"nullable_{typeName}_value"] = GenerateMatrixTypeDefinition(typeName, dim, isNullable: true);
+                result[$"{typeName}_value"] = GenerateMatrixTypeDefinition(
+                    typeName, dim, isNullable: false);
+                result[$"nullable_{typeName}_value"] = GenerateMatrixTypeDefinition(
+                    typeName, dim, isNullable: true);
             }
         }
 
@@ -149,9 +165,9 @@ public class JsonSchemaGenerator
                 => new JsonObject { ["type"] = isNullable ? new JsonArray { "number", "null" } : "number" },
             "string" => new JsonObject { ["type"] = new JsonArray { "string", "null" } },
             "char" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["maxLength"] = 1 },
-            "DateTime" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["format"] = "date-time" },
-            "TimeSpan" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
-            "Uri" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
+            "DateTime" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },  // No format specified
+            "TimeSpan" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },  // No format specified
+            "Uri" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },  // No format specified
             _ => null
         };
 
@@ -516,7 +532,7 @@ public class JsonSchemaGenerator
                 ["isReferenceOnly"] = new JsonObject
                 {
                     ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["description"] = "Whether this is a reference only (i.e. has no member data)"
                 }
             },
             ["required"] = new JsonArray { "id", "isReferenceOnly" }
@@ -1050,9 +1066,9 @@ public class JsonSchemaGenerator
                 => new JsonObject { ["type"] = isNullable ? new JsonArray { "number", "null" } : "number" },
             "string" => new JsonObject { ["type"] = new JsonArray { "string", "null" } },  // Strings can always be null
             "char" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["maxLength"] = 1 },
-            "DateTime" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string", ["format"] = "date-time" },
+            "DateTime" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },  // No format specified
             "TimeSpan" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },
-            "Uri" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },  // URI stored as string
+            "Uri" => new JsonObject { ["type"] = isNullable ? new JsonArray { "string", "null" } : "string" },  // URI stored as string, no format specified
             _ => null
         };
 
@@ -1144,9 +1160,9 @@ public class JsonSchemaGenerator
                 => new JsonObject { ["type"] = "number" },
             "string" => new JsonObject { ["type"] = "string" },
             "char" => new JsonObject { ["type"] = "string", ["maxLength"] = 1 },
-            "DateTime" => new JsonObject { ["type"] = "string", ["format"] = "date-time" },
+            "DateTime" => new JsonObject { ["type"] = "string" },  // No format specified
             "TimeSpan" => new JsonObject { ["type"] = "string" },
-            "Uri" => new JsonObject { ["type"] = "string" },  // URI stored as string
+            "Uri" => new JsonObject { ["type"] = "string" },  // URI stored as string, no format specified
             _ => null
         };
 
@@ -1442,10 +1458,10 @@ public class JsonSchemaGenerator
             "System.String" => new JsonObject { ["type"] = new JsonArray { "string", "null" } },  // Strings can always be null
             "System.Char" => new JsonObject { ["type"] = "string", ["maxLength"] = 1 },
             "System.DateTime" or "System.DateTimeOffset"
-                => new JsonObject { ["type"] = "string", ["format"] = "date-time" },
+                => new JsonObject { ["type"] = "string" },  // No format specified
             "System.TimeSpan" => new JsonObject { ["type"] = "string" },
             "System.Guid" => new JsonObject { ["type"] = "string", ["format"] = "uuid" },
-            "System.Uri" => new JsonObject { ["type"] = "string", ["format"] = "uri" },
+            "System.Uri" => new JsonObject { ["type"] = "string" },  // No format specified
             _ => new JsonObject { ["type"] = "object" }
         };
     }
@@ -1795,7 +1811,7 @@ public class JsonSchemaGenerator
             "System.Char" => "char",
             "System.DateTime" => "DateTime",
             "System.TimeSpan" => "TimeSpan",
-            "System.Guid" => "string", // Guids are typically strings
+            "System.Guid" => "string", // Guids are strings
             "System.Uri" => "Uri",
             _ => null
         };
