@@ -574,6 +574,7 @@ public class JsonSchemaGenerator
 
         if (resoniteLinkType is "color" or "colorX")
         {
+            bool includeProfile = resoniteLinkType == "colorX";
             var colorResult = new JsonObject
             {
                 ["type"] = "object",
@@ -581,7 +582,7 @@ public class JsonSchemaGenerator
                 ["properties"] = new JsonObject
                 {
                     ["$type"] = new JsonObject { ["const"] = schemaTypeName },
-                    ["value"] = GenerateColorSchema(),
+                    ["value"] = GenerateColorSchema(includeProfile),
                     ["id"] = new JsonObject { ["type"] = "string" }
                 },
                 ["required"] = new JsonArray { "$type", "id" }
@@ -676,13 +677,14 @@ public class JsonSchemaGenerator
 
         if (resoniteLinkType is "color" or "colorX")
         {
+            bool includeProfile = resoniteLinkType == "colorX";
             return new JsonObject
             {
                 ["type"] = "object",
                 ["properties"] = new JsonObject
                 {
                     ["$type"] = new JsonObject { ["const"] = resoniteLinkType },
-                    ["value"] = GenerateColorSchema()
+                    ["value"] = GenerateColorSchema(includeProfile)
                 },
                 ["required"] = new JsonArray { "$type", "value" }
             };
@@ -975,7 +977,8 @@ public class JsonSchemaGenerator
         // Color types
         if (resoniteLinkType is "color" or "colorX")
         {
-            return GenerateColorSchema();
+            bool includeProfile = resoniteLinkType == "colorX";
+            return GenerateColorSchema(includeProfile);
         }
 
         // Primitive types
@@ -1037,18 +1040,25 @@ public class JsonSchemaGenerator
         };
     }
 
-    private static JsonObject GenerateColorSchema()
+    private static JsonObject GenerateColorSchema(bool includeProfile = true)
     {
+        var properties = new JsonObject
+        {
+            ["r"] = new JsonObject { ["type"] = "number" },
+            ["g"] = new JsonObject { ["type"] = "number" },
+            ["b"] = new JsonObject { ["type"] = "number" },
+            ["a"] = new JsonObject { ["type"] = "number" }
+        };
+
+        if (includeProfile)
+        {
+            properties["profile"] = new JsonObject { ["type"] = "string" };
+        }
+
         return new JsonObject
         {
             ["type"] = "object",
-            ["properties"] = new JsonObject
-            {
-                ["r"] = new JsonObject { ["type"] = "number" },
-                ["g"] = new JsonObject { ["type"] = "number" },
-                ["b"] = new JsonObject { ["type"] = "number" },
-                ["a"] = new JsonObject { ["type"] = "number" }
-            },
+            ["properties"] = properties,
             ["required"] = new JsonArray { "r", "g", "b", "a" }
         };
     }
