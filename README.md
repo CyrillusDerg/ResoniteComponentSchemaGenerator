@@ -86,6 +86,9 @@ Schema Generation Options:
                          Automatically generates common.schema.json with shared type defs
   -c, --common           Generate only common.schema.json (no component schemas)
   -o, --output <dir>     Output directory for schema files (default: current)
+  --components-only      Only process FrooxEngine components (exclude ProtoFlux)
+  --protoflux-only       Only process ProtoFlux nodes; with -s generates combined
+                         protoflux.schema.json with all nodes in $defs
 
 Validation Options:
   -v, --validate         Validate a JSON file against a schema
@@ -181,6 +184,16 @@ dotnet run -- /path/to/FrooxEngine.dll -s AudioOutput -o ./schemas
 ```bash
 dotnet run -- /path/to/FrooxEngine.dll -s -o ./schemas
 ```
+
+### Generate combined ProtoFlux schema
+
+Generate a single `protoflux.schema.json` file containing all ProtoFlux node schemas in `$defs`:
+
+```bash
+dotnet run -- /path/to/FrooxEngine.dll --protoflux-only -s -o ./schemas
+```
+
+This creates a combined schema with all ProtoFlux nodes (typically 6000+) as definitions, suitable for referencing in a global component schema.
 
 ### Validate a component JSON file
 
@@ -425,6 +438,49 @@ Generic components with `[GenericTypes]` attribute generate a schema with `oneOf
   }
 }
 ```
+
+### ProtoFlux Combined Schema
+
+When using `--protoflux-only -s`, all ProtoFlux nodes are combined into a single `protoflux.schema.json` file with each node as a `$defs` entry:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "protoflux.schema.json",
+  "title": "ProtoFlux Nodes",
+  "description": "Combined schema containing all ProtoFlux node types for ResoniteLink",
+  "$defs": {
+    "FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Actions.DynamicImpulseTrigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "title": "DynamicImpulseTrigger",
+      "properties": {
+        "componentType": {
+          "const": "[ProtoFluxBindings]FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.Actions.DynamicImpulseTrigger"
+        },
+        "members": { ... },
+        "id": { "type": "string" },
+        "isReferenceOnly": { "type": "boolean" }
+      },
+      "required": ["id", "isReferenceOnly"]
+    },
+    "FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.ObjectRelay_1": {
+      "type": "object",
+      "title": "ObjectRelay",
+      "description": "ResoniteLink schema for ... (generic type - accepts any valid type argument)",
+      "properties": {
+        "componentType": {
+          "type": "string",
+          "pattern": "^\\[ProtoFluxBindings\\]...ObjectRelay<.+>$"
+        },
+        ...
+      }
+    }
+  }
+}
+```
+
+Generic ProtoFlux nodes without `[GenericTypes]` attribute use pattern matching for `componentType` to accept any valid type argument.
 
 ### `ValueCopy<T>` Example (FieldDrive and RelayRef)
 

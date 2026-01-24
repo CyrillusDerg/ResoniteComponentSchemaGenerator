@@ -68,6 +68,236 @@ public class JsonSchemaGenerator
     }
 
     /// <summary>
+    /// Generates a combined schema containing all ProtoFlux node types in $defs.
+    /// Each node type gets its own definition, keyed by a safe version of its full type name.
+    /// </summary>
+    /// <param name="protoFluxTypes">The ProtoFlux node types to include.</param>
+    /// <returns>A combined JSON schema with all nodes in $defs.</returns>
+    public JsonObject GenerateProtoFluxCombinedSchema(IEnumerable<Type> protoFluxTypes)
+    {
+        var defs = new JsonObject();
+        var allTypeDefsNeeded = new Dictionary<string, Type>();
+        int successCount = 0;
+        int errorCount = 0;
+
+        foreach (var type in protoFluxTypes.OrderBy(t => t.FullName))
+        {
+            try
+            {
+                string defName = GetSafeDefName(type);
+                var nodeSchema = GenerateSchemaForDef(type, allTypeDefsNeeded);
+                defs[defName] = nodeSchema;
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Error generating schema for {type.FullName}: {ex.Message}");
+                errorCount++;
+            }
+        }
+
+        // Add any needed local type definitions (enums, etc.) that aren't in common schema
+        var localTypeDefs = allTypeDefsNeeded
+            .Where(kvp => !UseExternalCommonSchema || !IsCommonTypeDefinition(kvp.Key))
+            .OrderBy(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var (typeDefName, type) in localTypeDefs)
+        {
+            var typeDef = GenerateTypeValueDefinitionFromType(type);
+            if (typeDef != null)
+            {
+                defs[typeDefName] = typeDef;
+            }
+        }
+
+        Console.WriteLine($"Generated {successCount} ProtoFlux node schema(s)");
+        if (errorCount > 0)
+        {
+            Console.WriteLine($"Failed: {errorCount}");
+        }
+
+        return new JsonObject
+        {
+            ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
+            ["$id"] = "protoflux.schema.json",
+            ["title"] = "ProtoFlux Nodes",
+            ["description"] = "Combined schema containing all ProtoFlux node types for ResoniteLink",
+            ["$defs"] = defs
+        };
+    }
+
+    /// <summary>
+    /// Creates a safe $defs key name from a type, replacing characters that are problematic in JSON keys.
+    /// </summary>
+    private static string GetSafeDefName(Type type)
+    {
+        string name = type.FullName ?? type.Name;
+        // Replace backtick with underscore for generic types
+        return name.Replace('`', '_');
+    }
+
+    /// <summary>
+    /// Generates a schema suitable for embedding in $defs (no $schema or $id at top level).
+    /// Handles both concrete and generic types.
+    /// </summary>
+    private JsonObject GenerateSchemaForDef(Type componentType, Dictionary<string, Type> typeDefsNeeded)
+    {
+        // Check if this is a generic type with GenericTypes attribute
+        if (componentType.IsGenericTypeDefinition && _genericResolver != null)
+        {
+            var allowedTypeNames = _genericResolver.GetAllowedTypeNamesForGeneric(componentType);
+            if (allowedTypeNames != null && allowedTypeNames.Length > 0)
+            {
+                return GenerateGenericOneOfSchemaForDef(componentType, allowedTypeNames, typeDefsNeeded);
+            }
+        }
+
+        // For generic type definitions without known allowed types, generate a flexible schema
+        if (componentType.IsGenericTypeDefinition)
+        {
+            return GenerateFlexibleGenericSchemaForDef(componentType, typeDefsNeeded);
+        }
+
+        return GenerateConcreteSchemaForDef(componentType, typeDefsNeeded);
+    }
+
+    /// <summary>
+    /// Generates a concrete component schema for embedding in $defs (no $schema or $id).
+    /// </summary>
+    private JsonObject GenerateConcreteSchemaForDef(Type componentType, Dictionary<string, Type> typeDefsNeeded)
+    {
+        string componentTypeName = $"{GetAssemblyPrefix(componentType)}{componentType.FullName}";
+        var membersSchema = GenerateMembersSchema(componentType, useRefs: true, typeDefsNeeded);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["title"] = componentType.Name,
+            ["description"] = $"ResoniteLink schema for {componentType.FullName}",
+            ["properties"] = new JsonObject
+            {
+                ["componentType"] = new JsonObject
+                {
+                    ["const"] = componentTypeName,
+                    ["description"] = "The component type in Resonite notation"
+                },
+                ["members"] = membersSchema,
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+        };
+    }
+
+    /// <summary>
+    /// Generates a oneOf schema for generic types, suitable for embedding in $defs.
+    /// </summary>
+    private JsonObject GenerateGenericOneOfSchemaForDef(Type genericTypeDefinition, string[] allowedTypeNames, Dictionary<string, Type> typeDefsNeeded)
+    {
+        var oneOfArray = new JsonArray();
+        var localDefs = new JsonObject();
+        string baseName = GetBaseTypeName(genericTypeDefinition);
+        int successCount = 0;
+
+        foreach (var typeName in allowedTypeNames)
+        {
+            try
+            {
+                var typeArg = _loader.FindTypeByFullName(typeName);
+                if (typeArg == null)
+                    continue;
+
+                var concreteType = genericTypeDefinition.MakeGenericType(typeArg);
+                string typeArgName = GetSimpleTypeName(typeArg);
+                string variantDefName = $"{baseName}_{typeArgName}";
+
+                var concreteSchema = GenerateConcreteSchemaForGenericInstance(concreteType, typeArg, useRefs: true, typeDefsNeeded);
+                localDefs[variantDefName] = concreteSchema;
+                oneOfArray.Add(new JsonObject { ["$ref"] = $"#/$defs/{variantDefName}" });
+                successCount++;
+            }
+            catch
+            {
+                // Skip types that fail
+            }
+        }
+
+        var schema = new JsonObject
+        {
+            ["title"] = baseName,
+            ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} with {successCount} type variant(s)"
+        };
+
+        if (oneOfArray.Count > 0)
+        {
+            schema["oneOf"] = oneOfArray;
+        }
+
+        if (localDefs.Count > 0)
+        {
+            schema["$defs"] = localDefs;
+        }
+
+        return schema;
+    }
+
+    /// <summary>
+    /// Generates a flexible schema for generic types without [GenericTypes] attribute, suitable for embedding in $defs.
+    /// </summary>
+    private JsonObject GenerateFlexibleGenericSchemaForDef(Type genericTypeDefinition, Dictionary<string, Type> typeDefsNeeded)
+    {
+        string baseName = GetBaseTypeName(genericTypeDefinition);
+        string assemblyPrefix = GetAssemblyPrefix(genericTypeDefinition);
+        string ns = genericTypeDefinition.Namespace ?? "";
+
+        string escapedAssemblyPrefix = EscapeForJsonRegex(assemblyPrefix);
+        string escapedNamespace = EscapeForJsonRegex(ns);
+        string escapedBaseName = EscapeForJsonRegex(baseName);
+        string componentTypePattern = $"^{escapedAssemblyPrefix}{escapedNamespace}\\.{escapedBaseName}<.+>$";
+
+        var membersSchema = GenerateFlexibleMembersSchema(genericTypeDefinition, typeDefsNeeded);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["title"] = baseName,
+            ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} (generic type - accepts any valid type argument)",
+            ["properties"] = new JsonObject
+            {
+                ["componentType"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["pattern"] = componentTypePattern,
+                    ["description"] = "The component type in Resonite notation (matches any valid type argument)"
+                },
+                ["members"] = membersSchema,
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+        };
+    }
+
+    /// <summary>
     /// Gets all common type definitions (non-enum types).
     /// </summary>
     /// <returns>A dict from ref name (e.g. nullable_ushort_value) to schema.</returns>

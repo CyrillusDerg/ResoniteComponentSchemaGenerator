@@ -1,0 +1,28 @@
+                      {
+                        "componentType": "[ProtoFluxBindings]FrooxEngine.ProtoFlux.Runtimes.Execution.Nodes.FrooxEngine.Playback.ClipLengthDouble",
+                        "members": {
+                          "persistent": {
+                            "$type": "bool",
+                            "value": true,
+                            "id": "Reso_2A97"
+                          },
+                          "UpdateOrder": {
+                            "$type": "int",
+                            "value": 0,
+                            "id": "Reso_2A98"
+                          },
+                          "Enabled": {
+                            "$type": "bool",
+                            "value": true,
+                            "id": "Reso_2A99"
+                          },
+                          "Source": {
+                            "$type": "reference",
+                            "targetId": "Reso_291",
+                            "targetType": "[FrooxEngine]FrooxEngine.ProtoFlux.INodeObjectOutput<[FrooxEngine]FrooxEngine.IPlayable>",
+                            "id": "Reso_2A9A"
+                          }
+                        },
+                        "id": "Reso_270",
+                        "isReferenceOnly": false
+                      }
