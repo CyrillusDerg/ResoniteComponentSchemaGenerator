@@ -181,7 +181,7 @@ try
     {
         // -c is implied when -s is used
         bool useCommonSchema = generateCommonSchema || generateAllSchemas || schemaClass != null;
-        return GenerateSchemas(loader, genericResolver, schemaClass, outputDir, useCommonSchema);
+        return GenerateSchemas(loader, genericResolver, schemaClass, outputDir, useCommonSchema, sources);
     }
 
     if (propsForClass != null)
@@ -197,7 +197,7 @@ catch (Exception ex)
     return 1;
 }
 
-static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericResolver, string? className, string outputDir, bool useExternalCommonSchema)
+static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericResolver, string? className, string outputDir, bool useExternalCommonSchema, AssemblySource sources)
 {
     // Ensure output directory exists
     if (!Directory.Exists(outputDir))
@@ -228,6 +228,39 @@ static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericR
             Console.WriteLine($"Error generating common schema: {ex.Message}");
             errorCount++;
         }
+    }
+
+    // Special case: --protoflux-only with -s generates a single combined schema
+    if (sources == AssemblySource.ProtoFluxBindings && className == null)
+    {
+        Console.WriteLine("Generating combined ProtoFlux schema...");
+        Console.WriteLine($"Output directory: {Path.GetFullPath(outputDir)}");
+        Console.WriteLine();
+
+        try
+        {
+            var protoFluxTypes = loader.GetProtoFluxNodes().Where(t => !t.IsAbstract);
+            var combinedSchema = generator.GenerateProtoFluxCombinedSchema(protoFluxTypes);
+            string json = generator.SerializeSchema(combinedSchema);
+
+            string filePath = Path.Combine(outputDir, "protoflux.schema.json");
+            File.WriteAllText(filePath, json);
+            Console.WriteLine($"Created: protoflux.schema.json");
+            successCount++;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating combined ProtoFlux schema: {ex.Message}");
+            errorCount++;
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"Generated {successCount} schema(s)");
+        if (errorCount > 0)
+        {
+            Console.WriteLine($"Failed: {errorCount}");
+        }
+        return errorCount > 0 ? 1 : 0;
     }
 
     List<Type> typesToProcess;
