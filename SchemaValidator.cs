@@ -15,26 +15,59 @@ public class SchemaValidator
     public void RegisterSchema(string schemaPath)
     {
         var schemaJson = File.ReadAllText(schemaPath);
-        var schema = JsonSchema.FromText(schemaJson);
+        var fileName = Path.GetFileName(schemaPath);
+        RegisterSchemaFromText(schemaJson, fileName);
+    }
 
-        // Get the $id from the schema, or use the filename
+    /// <summary>
+    /// Registers a schema from JSON text for use in $ref resolution.
+    /// </summary>
+    /// <param name="schemaJson">The JSON schema text.</param>
+    /// <param name="fileName">Optional filename for registration (used if schema has no $id).</param>
+    public void RegisterSchemaFromText(string schemaJson, string? fileName = null)
+    {
+        // Get the $id from the schema
         var schemaNode = JsonNode.Parse(schemaJson);
         var schemaId = schemaNode?["$id"]?.GetValue<string>();
+
+        // Build URIs for registration
+        var urisToRegister = new List<Uri>();
 
         if (schemaId != null)
         {
             var uri = new Uri(schemaId, UriKind.RelativeOrAbsolute);
             if (!uri.IsAbsoluteUri)
             {
-                // Make it absolute for the registry
-                uri = new Uri($"file:///{schemaId}");
+                urisToRegister.Add(new Uri($"file:///{schemaId}"));
+                // Also register under the default base URI that JsonSchema.Net uses
+                urisToRegister.Add(new Uri($"https://json-everything.lib/{schemaId}"));
             }
-            SchemaRegistry.Global.Register(uri, schema);
+            else
+            {
+                urisToRegister.Add(uri);
+            }
         }
 
-        // Also register by filename for relative $ref resolution
-        var fileName = Path.GetFileName(schemaPath);
-        SchemaRegistry.Global.Register(new Uri($"file:///{fileName}"), schema);
+        if (fileName != null)
+        {
+            urisToRegister.Add(new Uri($"file:///{fileName}"));
+            urisToRegister.Add(new Uri($"https://json-everything.lib/{fileName}"));
+        }
+
+        // Parse schema and register under all URIs
+        // Use global registry so refs work during evaluation
+        foreach (var uri in urisToRegister.Distinct())
+        {
+            try
+            {
+                var schema = JsonSchema.FromText(schemaJson, baseUri: uri);
+                // Schema is auto-registered during FromText when baseUri is provided
+            }
+            catch (JsonSchemaException)
+            {
+                // Schema already registered under this URI, ignore
+            }
+        }
     }
 
     /// <summary>
@@ -45,12 +78,52 @@ public class SchemaValidator
     /// <returns>Validation result with details.</returns>
     public ValidationResult Validate(string jsonPath, string schemaPath)
     {
-        // Load the schema
         var schemaJson = File.ReadAllText(schemaPath);
-        var schema = JsonSchema.FromText(schemaJson);
-
-        // Load the JSON to validate
         var jsonText = File.ReadAllText(jsonPath);
+        return ValidateJson(jsonText, schemaJson);
+    }
+
+    /// <summary>
+    /// Validates JSON text against a schema string.
+    /// </summary>
+    /// <param name="jsonText">JSON text to validate.</param>
+    /// <param name="schemaJson">JSON schema text.</param>
+    /// <returns>Validation result with details.</returns>
+    public ValidationResult ValidateJson(string jsonText, string schemaJson)
+    {
+        JsonSchema schema;
+        try
+        {
+            schema = JsonSchema.FromText(schemaJson);
+        }
+        catch (JsonSchemaException)
+        {
+            // Schema may already be registered, try to get it from text without registration
+            // Parse to get the $id and retrieve from registry
+            var schemaNode = JsonNode.Parse(schemaJson);
+            var schemaId = schemaNode?["$id"]?.GetValue<string>();
+            if (schemaId != null)
+            {
+                var uri = new Uri(schemaId, UriKind.RelativeOrAbsolute);
+                if (!uri.IsAbsoluteUri)
+                {
+                    uri = new Uri($"https://json-everything.lib/{schemaId}");
+                }
+                var registered = SchemaRegistry.Global.Get(uri);
+                if (registered is JsonSchema js)
+                {
+                    schema = js;
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            else
+            {
+                throw;
+            }
+        }
 
         JsonElement jsonElement;
         try
@@ -64,7 +137,7 @@ public class SchemaValidator
             return new ValidationResult
             {
                 IsValid = false,
-                Errors = [$"Failed to parse JSON file: {ex.Message}"]
+                Errors = [$"Failed to parse JSON: {ex.Message}"]
             };
         }
 

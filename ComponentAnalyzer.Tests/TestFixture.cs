@@ -40,7 +40,10 @@ public class TestFixture : IDisposable
 
         Loader = ComponentLoader.Load(resonitePath);
         GenericResolver = GenericTypeResolver.TryCreate(resonitePath);
-        SchemaGenerator = new JsonSchemaGenerator(Loader, GenericResolver);
+        SchemaGenerator = new JsonSchemaGenerator(Loader, GenericResolver)
+        {
+            UseExternalCommonSchema = true
+        };
     }
 
     public void Dispose()

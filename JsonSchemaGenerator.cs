@@ -29,6 +29,17 @@ public class JsonSchemaGenerator
     }
 
     /// <summary>
+    /// Creates a safe schema $id from a type name, replacing characters that cause URI resolution issues.
+    /// </summary>
+    private static string GetSafeSchemaId(Type type)
+    {
+        string name = type.FullName ?? type.Name;
+        // Replace backtick (used in generic type names like `1) with underscore
+        // to avoid URI resolution issues
+        return name.Replace('`', '_') + ".schema.json";
+    }
+
+    /// <summary>
     /// Generates the common schema containing all standard value type definitions.
     /// This includes primitives, vectors, quaternions, colors, and matrices.
     /// Enum types are NOT included as they are component-specific.
@@ -587,7 +598,7 @@ public class JsonSchemaGenerator
         var schema = new JsonObject
         {
             ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
-            ["$id"] = $"{genericTypeDefinition.FullName}.schema.json",
+            ["$id"] = GetSafeSchemaId(genericTypeDefinition),
             ["title"] = baseName,
             ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} (generic type - accepts any valid type argument)",
             ["type"] = "object",
@@ -819,7 +830,7 @@ public class JsonSchemaGenerator
         var schema = new JsonObject
         {
             ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
-            ["$id"] = $"{componentType.FullName}.schema.json",
+            ["$id"] = GetSafeSchemaId(componentType),
             ["title"] = componentType.Name,
             ["description"] = $"ResoniteLink schema for {componentType.FullName}",
             ["type"] = "object",
@@ -932,7 +943,7 @@ public class JsonSchemaGenerator
         var resultSchema = new JsonObject
         {
             ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
-            ["$id"] = $"{genericTypeDefinition.FullName}.schema.json",
+            ["$id"] = GetSafeSchemaId(genericTypeDefinition),
             ["title"] = baseName,
             ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} with {successCount} type variant(s) for T",
             ["oneOf"] = oneOfArray,
