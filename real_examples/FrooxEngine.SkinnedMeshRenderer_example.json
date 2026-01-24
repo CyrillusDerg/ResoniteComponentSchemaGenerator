@@ -1,0 +1,250 @@
+                              {
+                                "componentType": "[FrooxEngine]FrooxEngine.SkinnedMeshRenderer",
+                                "members": {
+                                  "persistent": {
+                                    "$type": "bool",
+                                    "value": true,
+                                    "id": "Reso_6481"
+                                  },
+                                  "UpdateOrder": {
+                                    "$type": "int",
+                                    "value": 0,
+                                    "id": "Reso_6482"
+                                  },
+                                  "Enabled": {
+                                    "$type": "bool",
+                                    "value": true,
+                                    "id": "Reso_6483"
+                                  },
+                                  "Mesh": {
+                                    "$type": "reference",
+                                    "targetId": "Reso_57D",
+                                    "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Mesh>",
+                                    "id": "Reso_6484"
+                                  },
+                                  "Materials": {
+                                    "$type": "list",
+                                    "elements": [
+                                      {
+                                        "$type": "reference",
+                                        "targetId": "Reso_1840",
+                                        "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Material>",
+                                        "id": "Reso_6485"
+                                      },
+                                      {
+                                        "$type": "reference",
+                                        "targetId": "Reso_184B",
+                                        "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Material>",
+                                        "id": "Reso_6486"
+                                      },
+                                      {
+                                        "$type": "reference",
+                                        "targetId": "Reso_181B",
+                                        "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Material>",
+                                        "id": "Reso_6487"
+                                      },
+                                      {
+                                        "$type": "reference",
+                                        "targetId": "Reso_180E",
+                                        "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Material>",
+                                        "id": "Reso_6488"
+                                      },
+                                      {
+                                        "$type": "reference",
+                                        "targetId": "Reso_1828",
+                                        "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Material>",
+                                        "id": "Reso_6489"
+                                      },
+                                      {
+                                        "$type": "reference",
+                                        "targetId": "Reso_1835",
+                                        "targetType": "[FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.Material>",
+                                        "id": "Reso_648A"
+                                      }
+                                    ],
+                                    "id": "Reso_648B"
+                                  },
+                                  "MaterialPropertyBlocks": {
+                                    "$type": "list",
+                                    "elements": [],
+                                    "id": "Reso_648C"
+                                  },
+                                  "ShadowCastMode": {
+                                    "$type": "enum",
+                                    "value": "Off",
+                                    "enumType": "ShadowCastMode",
+                                    "id": "Reso_648D"
+                                  },
+                                  "MotionVectorMode": {
+                                    "$type": "enum",
+                                    "value": "Object",
+                                    "enumType": "MotionVectorMode",
+                                    "id": "Reso_648E"
+                                  },
+                                  "SortingOrder": {
+                                    "$type": "int",
+                                    "value": 0,
+                                    "id": "Reso_648F"
+                                  },
+                                  "BoundsComputeMethod": {
+                                    "$type": "enum",
+                                    "value": "Static",
+                                    "enumType": "SkinnedBounds",
+                                    "id": "Reso_6490"
+                                  },
+                                  "ProxyBoundsSource": {
+                                    "$type": "reference",
+                                    "targetId": null,
+                                    "targetType": "[FrooxEngine]FrooxEngine.SkinnedMeshRenderer",
+                                    "id": "Reso_6491"
+                                  },
+                                  "Bones": {
+                                    "$type": "list",
+                                    "elements": [],
+                                    "id": "Reso_6492"
+                                  },
+                                  "BlendShapeWeights": {
+                                    "$type": "list",
+                                    "elements": [
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_6493"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_6494"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_6495"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_6496"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_6497"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_6498"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_6499"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_649A"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_649B"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_649C"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_649D"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_649E"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_649F"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A0"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A1"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A2"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A3"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A4"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A5"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A6"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A7"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A8"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64A9"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64AA"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64AB"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64AC"
+                                      },
+                                      {
+                                        "$type": "float",
+                                        "value": 0,
+                                        "id": "Reso_64AD"
+                                      }
+                                    ],
+                                    "id": "Reso_64AE"
+                                  }
+                                },
+                                "id": "Reso_17F4",
+                                "isReferenceOnly": false
+                              }

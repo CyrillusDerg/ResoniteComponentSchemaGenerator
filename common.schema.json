@@ -332,16 +332,16 @@
           "type": "object",
           "properties": {
             "r": {
-              "type": "integer"
+              "type": "number"
             },
             "g": {
-              "type": "integer"
+              "type": "number"
             },
             "b": {
-              "type": "integer"
+              "type": "number"
             },
             "a": {
-              "type": "integer"
+              "type": "number"
             }
           },
           "required": [
@@ -412,8 +412,7 @@
           "const": "DateTime"
         },
         "value": {
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         },
         "id": {
           "type": "string"
@@ -1157,6 +1156,1714 @@
         "id"
       ]
     },
+    "IField_bool_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbool\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbool\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_bool2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbool2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbool2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_bool3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbool3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbool3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_bool4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbool4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbool4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_byte_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbyte\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbyte\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_byte2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbyte2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbyte2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_byte3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbyte3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbyte3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_byte4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cbyte4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cbyte4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_char_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cchar\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cchar\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_color_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Ccolor\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Ccolor\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_color32_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Ccolor32\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Ccolor32\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_colorX_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003CcolorX\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003CcolorX\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_DateTime_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003CDateTime\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003CDateTime\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_decimal_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdecimal\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdecimal\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_double_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdouble\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdouble\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_double2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdouble2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdouble2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_double2x2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdouble2x2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdouble2x2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_double3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdouble3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdouble3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_double3x3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdouble3x3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdouble3x3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_double4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdouble4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdouble4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_double4x4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cdouble4x4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cdouble4x4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_doubleQ_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003CdoubleQ\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003CdoubleQ\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_float_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cfloat\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cfloat\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_float2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cfloat2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cfloat2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_float2x2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cfloat2x2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cfloat2x2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_float3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cfloat3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cfloat3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_float3x3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cfloat3x3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cfloat3x3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_float4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cfloat4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cfloat4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_float4x4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cfloat4x4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cfloat4x4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_floatQ_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003CfloatQ\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003CfloatQ\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_int_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cint\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cint\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_int2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cint2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cint2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_int3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cint3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cint3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_int4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cint4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cint4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_long_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Clong\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Clong\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_long2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Clong2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Clong2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_long3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Clong3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Clong3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_long4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Clong4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Clong4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_sbyte_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Csbyte\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Csbyte\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_sbyte2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Csbyte2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Csbyte2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_sbyte3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Csbyte3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Csbyte3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_sbyte4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Csbyte4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Csbyte4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_short_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cshort\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cshort\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_short2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cshort2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cshort2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_short3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cshort3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cshort3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_short4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cshort4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cshort4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_string_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cstring\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cstring\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_TimeSpan_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003CTimeSpan\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003CTimeSpan\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_uint_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cuint\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cuint\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_uint2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cuint2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cuint2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_uint3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cuint3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cuint3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_uint4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cuint4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cuint4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ulong_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Culong\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Culong\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ulong2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Culong2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Culong2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ulong3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Culong3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Culong3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ulong4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Culong4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Culong4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_Uri_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003CUri\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003CUri\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ushort_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cushort\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cushort\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ushort2_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cushort2\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cushort2\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ushort3_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cushort3\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cushort3\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
+    "IField_ushort4_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Reference to IField\u003Cushort4\u003E",
+      "properties": {
+        "$type": {
+          "const": "reference"
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the target field (null if no target)"
+        },
+        "targetType": {
+          "const": "[FrooxEngine]FrooxEngine.IField\u003Cushort4\u003E",
+          "description": "Type of the target field"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "$type",
+        "id"
+      ]
+    },
     "int_value": {
       "type": "object",
       "additionalProperties": false,
@@ -1740,16 +3447,16 @@
           "type": "object",
           "properties": {
             "r": {
-              "type": "integer"
+              "type": "number"
             },
             "g": {
-              "type": "integer"
+              "type": "number"
             },
             "b": {
-              "type": "integer"
+              "type": "number"
             },
             "a": {
-              "type": "integer"
+              "type": "number"
             }
           },
           "required": [
@@ -1821,8 +3528,7 @@
           "type": [
             "string",
             "null"
-          ],
-          "format": "date-time"
+          ]
         },
         "id": {
           "type": "string"

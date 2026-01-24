@@ -1435,6 +1435,8 @@ public class JsonSchemaGenerator
         {
             "SyncList" => GenerateSyncListSchema(field, innerType, useRefs, typeDefsNeeded),
             "SyncRefList" => GenerateSyncRefListSchema(field, innerType),
+            "SyncAssetList" => GenerateSyncAssetListSchema(field, innerType),
+            "SyncFieldList" => GenerateSyncFieldListSchema(field, innerType, useRefs, typeDefsNeeded),
             "SyncRef" or "RelayRef" or "DestroyRelayRef" => GenerateReferenceSchemaOrCommonRef(field, innerType, typeDefsNeeded),
             "AssetRef" => GenerateAssetRefSchema(field, innerType),
             "FieldDrive" => GenerateFieldDriveSchemaOrCommonRef(field, innerType, typeDefsNeeded),
@@ -1854,7 +1856,7 @@ public class JsonSchemaGenerator
             ["description"] = $"Synchronized list of {PropertyAnalyzer.GetFriendlyTypeName(elementType)}",
             ["properties"] = new JsonObject
             {
-                ["$type"] = new JsonObject { ["const"] = "syncList" },
+                ["$type"] = new JsonObject { ["const"] = "list" },
                 ["elements"] = new JsonObject
                 {
                     ["type"] = "array",
@@ -1875,7 +1877,7 @@ public class JsonSchemaGenerator
             ["description"] = $"Synchronized reference list of {PropertyAnalyzer.GetFriendlyTypeName(elementType)}",
             ["properties"] = new JsonObject
             {
-                ["$type"] = new JsonObject { ["const"] = "syncList" },
+                ["$type"] = new JsonObject { ["const"] = "list" },
                 ["elements"] = new JsonObject
                 {
                     ["type"] = "array",
@@ -1899,6 +1901,119 @@ public class JsonSchemaGenerator
         };
     }
 
+    private JsonObject GenerateSyncAssetListSchema(ComponentField field, Type assetType)
+    {
+        // SyncAssetList<T> contains references to IAssetProvider<T>
+        string formattedAssetType = FormatResoniteLinkTypeName(assetType);
+        string targetType = $"[FrooxEngine]FrooxEngine.IAssetProvider<{formattedAssetType}>";
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Synchronized asset list of {PropertyAnalyzer.GetFriendlyTypeName(assetType)}",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "list" },
+                ["elements"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["items"] = new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["additionalProperties"] = false,
+                        ["properties"] = new JsonObject
+                        {
+                            ["$type"] = new JsonObject { ["const"] = "reference" },
+                            ["targetId"] = new JsonObject { ["type"] = new JsonArray { "string", "null" } },
+                            ["targetType"] = new JsonObject
+                            {
+                                ["const"] = targetType,
+                                ["description"] = "Type of the asset provider"
+                            },
+                            ["id"] = new JsonObject { ["type"] = "string" }
+                        },
+                        ["required"] = new JsonArray { "$type", "id" }
+                    }
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    private JsonObject GenerateSyncFieldListSchema(ComponentField field, Type elementType, bool useRefs = false, Dictionary<string, Type>? typeDefsNeeded = null)
+    {
+        // SyncFieldList<T> contains value fields of type T
+        string? elementResoniteLinkType = GetResoniteLinkType(elementType);
+
+        JsonObject elementsItemSchema;
+
+        if (useRefs && elementResoniteLinkType != null)
+        {
+            string? typeDefName = GetTypeDefinitionName(elementType);
+            if (typeDefName != null)
+            {
+                AddTypeDefIfNeeded(typeDefsNeeded, typeDefName, elementType);
+                elementsItemSchema = new JsonObject
+                {
+                    ["$ref"] = GetRefPath(typeDefName)
+                };
+            }
+            else
+            {
+                elementsItemSchema = GenerateFieldListElementSchema(elementType, elementResoniteLinkType);
+            }
+        }
+        else if (elementResoniteLinkType != null)
+        {
+            elementsItemSchema = GenerateFieldListElementSchema(elementType, elementResoniteLinkType);
+        }
+        else
+        {
+            elementsItemSchema = new JsonObject
+            {
+                ["type"] = "object",
+                ["additionalProperties"] = false,
+                ["description"] = $"Element type: {PropertyAnalyzer.GetFriendlyTypeName(elementType)}"
+            };
+        }
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["description"] = $"Synchronized field list of {PropertyAnalyzer.GetFriendlyTypeName(elementType)}",
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "list" },
+                ["elements"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["items"] = elementsItemSchema
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    private JsonObject GenerateFieldListElementSchema(Type elementType, string resoniteLinkType)
+    {
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = resoniteLinkType },
+                ["value"] = GenerateValueSchema(elementType, resoniteLinkType),
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "value", "id" }
+        };
+    }
+
     private static string GetWrapperTypeName(Type type)
     {
         if (!type.IsGenericType)
@@ -1917,7 +2032,7 @@ public class JsonSchemaGenerator
         string typeName = GetWrapperTypeName(type);
 
         string[] wrapperTypes = ["Sync", "FieldDrive", "DriveRef", "AssetRef", "SyncRef", "RelayRef",
-                                  "DestroyRelayRef", "SyncList", "SyncRefList", "SyncAssetList"];
+                                  "DestroyRelayRef", "SyncList", "SyncRefList", "SyncAssetList", "SyncFieldList"];
 
         if (wrapperTypes.Contains(typeName))
         {

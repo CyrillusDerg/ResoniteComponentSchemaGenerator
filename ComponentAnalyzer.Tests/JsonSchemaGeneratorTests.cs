@@ -153,7 +153,7 @@ public class JsonSchemaGeneratorTests
 
         Assert.NotNull(excludedListeners);
         Assert.Equal("object", excludedListeners["type"]?.GetValue<string>());
-        Assert.Equal("syncList", excludedListeners["properties"]?["$type"]?["const"]?.GetValue<string>());
+        Assert.Equal("list", excludedListeners["properties"]?["$type"]?["const"]?.GetValue<string>());
 
         var elements = excludedListeners["properties"]?["elements"]?.AsObject();
         Assert.NotNull(elements);

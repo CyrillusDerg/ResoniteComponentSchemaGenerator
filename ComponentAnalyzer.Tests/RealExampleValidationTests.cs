@@ -217,6 +217,30 @@ public class RealExampleValidationTests
     }
 
     [Fact]
+    public void SkinnedMeshRenderer_ValidatesRealExample()
+    {
+        // This is a generic FrooxEngine component with FieldDrive member
+        var componentType = _fixture.Loader.FindComponent("SkinnedMeshRenderer");
+        Assert.NotNull(componentType);
+
+        // Generate schema
+        var schema = _fixture.SchemaGenerator.GenerateSchema(componentType);
+        var schemaJson = _fixture.SchemaGenerator.SerializeSchema(schema);
+
+        // Load example
+        var examplePath = Path.Combine(ExamplesPath, "FrooxEngine.SkinnedMeshRenderer_example.json");
+        Assert.True(File.Exists(examplePath), $"Example file not found: {examplePath}");
+        var exampleJson = File.ReadAllText(examplePath);
+
+        // Validate using SchemaValidator
+        var validator = CreateValidatorWithCommonSchema();
+        var result = validator.ValidateJson(exampleJson, schemaJson);
+
+        Assert.True(result.IsValid,
+            $"Validation failed for SkinnedMeshRenderer:\n{string.Join("\n", result.Errors)}");
+    }
+
+    [Fact]
     public void InvalidJson_FailsValidation()
     {
         // Find a component type
