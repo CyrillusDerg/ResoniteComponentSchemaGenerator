@@ -1,0 +1,91 @@
+      {
+        "componentType": "[FrooxEngine]FrooxEngine.GradientStripTexture",
+        "members": {
+          "persistent": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_21E4"
+          },
+          "UpdateOrder": {
+            "$type": "int",
+            "value": 0,
+            "id": "Reso_21E5"
+          },
+          "Enabled": {
+            "$type": "bool",
+            "value": true,
+            "id": "Reso_21E6"
+          },
+          "HighPriorityIntegration": {
+            "$type": "bool",
+            "value": false,
+            "id": "Reso_21E7"
+          },
+          "FilterMode": {
+            "$type": "enum",
+            "value": "Bilinear",
+            "enumType": "TextureFilterMode",
+            "id": "Reso_21E8"
+          },
+          "AnisotropicLevel": {
+            "$type": "int",
+            "value": 8,
+            "id": "Reso_21E9"
+          },
+          "WrapModeU": {
+            "$type": "enum",
+            "value": "Clamp",
+            "enumType": "TextureWrapMode",
+            "id": "Reso_21EA"
+          },
+          "WrapModeV": {
+            "$type": "enum",
+            "value": "Clamp",
+            "enumType": "TextureWrapMode",
+            "id": "Reso_21EB"
+          },
+          "MipmapBias": {
+            "$type": "float",
+            "value": 0,
+            "id": "Reso_21EC"
+          },
+          "Profile": {
+            "$type": "enum",
+            "value": "sRGB",
+            "enumType": "ColorProfile",
+            "id": "Reso_21ED"
+          },
+          "Size": {
+            "$type": "int2",
+            "value": {
+              "x": 4,
+              "y": 32
+            },
+            "id": "Reso_21EE"
+          },
+          "Mipmaps": {
+            "$type": "bool",
+            "value": false,
+            "id": "Reso_21EF"
+          },
+          "Format": {
+            "$type": "enum",
+            "value": "RGBA32",
+            "enumType": "TextureFormat",
+            "id": "Reso_21F0"
+          },
+          "Exp": {
+            "$type": "float",
+            "value": 4,
+            "id": "Reso_21F1"
+          },
+          "_orientation": {
+            "$type": "enum",
+            "value": "Vertical",
+            "enumType": "StripOrientation",
+            "id": "Reso_21F2"
+          }
+        },
+        "id": "Reso_B",
+        "isReferenceOnly": false
+      }

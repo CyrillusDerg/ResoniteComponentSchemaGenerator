@@ -65,6 +65,7 @@ FROOXENGINE_DLL_PATH=/path/to/FrooxEngine.dll dotnet test docgen.sln
 ### Test Coverage
 
 The tests verify:
+
 - **AudioOutput schema**: Metadata, componentType format, field types (float, int, bool, nullable bool), enum definitions, reference fields, sync lists, `id` field requirements
 - **ValueField\<T\> schema**: oneOf structure for generic components, type variants (bool, int, float, string, float3, color), vector/quaternion/color value schemas
 - **ComponentLoader**: Finding components by name, generic syntax normalization (`ValueField<1>`, `ValueField[1]`, `ValueField<T>`), inheritance chains
@@ -73,7 +74,7 @@ The tests verify:
 
 ## Usage
 
-```
+```txt
 ComponentAnalyzer <path-to-DLL> [options]
 
 Options:
@@ -363,7 +364,7 @@ Generic components with `[GenericTypes]` attribute generate a schema with `oneOf
 All member values include a required `id` field (string) in addition to `$type` and `value`.
 
 | FrooxEngine Type | ResoniteLink `$type` | Value Schema |
-|------------------|---------------------|--------------|
+| ------------------ | --------------------- | -------------- |
 | `Sync<Boolean>` | `"bool"` | `boolean` |
 | `Sync<Boolean?>` | `"bool?"` | `["boolean", "null"]` (value optional) |
 | `Sync<Int32>` | `"int"` | `integer` |
@@ -384,7 +385,7 @@ All member values include a required `id` field (string) in addition to `$type` 
 All components inherit these fields from `ComponentBase`:
 
 | Field Name | Type | Note |
-|------------|------|------|
+| ------------ | ------ | ------ |
 | `persistent` | `bool` | Lowercase (no NameOverride) |
 | `UpdateOrder` | `int` | From `[NameOverride("UpdateOrder")]` |
 | `Enabled` | `bool` | From `[NameOverride("Enabled")]` |

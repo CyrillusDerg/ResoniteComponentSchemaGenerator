@@ -1,0 +1,105 @@
+                          {
+                            "componentType": "[FrooxEngine]FrooxEngine.ItemShelf",
+                            "members": {
+                              "persistent": {
+                                "$type": "bool",
+                                "value": true,
+                                "id": "Reso_52ED"
+                              },
+                              "UpdateOrder": {
+                                "$type": "int",
+                                "value": 0,
+                                "id": "Reso_52EE"
+                              },
+                              "Enabled": {
+                                "$type": "bool",
+                                "value": true,
+                                "id": "Reso_52EF"
+                              },
+                              "GrowDirection": {
+                                "$type": "enum",
+                                "value": "Left",
+                                "enumType": "Direction",
+                                "id": "Reso_52F0"
+                              },
+                              "IgnoreGrabber": {
+                                "$type": "reference",
+                                "targetId": "Reso_909",
+                                "targetType": "[FrooxEngine]FrooxEngine.Grabber",
+                                "id": "Reso_52F1"
+                              },
+                              "MinLength": {
+                                "$type": "float",
+                                "value": 0.05,
+                                "id": "Reso_52F2"
+                              },
+                              "Width": {
+                                "$type": "float",
+                                "value": 0.06,
+                                "id": "Reso_52F3"
+                              },
+                              "Thickness": {
+                                "$type": "float",
+                                "value": 0.005,
+                                "id": "Reso_52F4"
+                              },
+                              "MaxItemSize": {
+                                "$type": "float",
+                                "value": 0.35,
+                                "id": "Reso_52F5"
+                              },
+                              "MaxPlaneDistance": {
+                                "$type": "float",
+                                "value": 0,
+                                "id": "Reso_52F6"
+                              },
+                              "MaxHeightDistance": {
+                                "$type": "float",
+                                "value": 0.05,
+                                "id": "Reso_52F7"
+                              },
+                              "_targetLength": {
+                                "$type": "float",
+                                "value": 0,
+                                "id": "Reso_52F8"
+                              },
+                              "_visual": {
+                                "$type": "reference",
+                                "targetId": "Reso_937",
+                                "targetType": "[FrooxEngine]FrooxEngine.Slot",
+                                "id": "Reso_52F9"
+                              },
+                              "_content": {
+                                "$type": "reference",
+                                "targetId": "Reso_945",
+                                "targetType": "[FrooxEngine]FrooxEngine.Slot",
+                                "id": "Reso_52FA"
+                              },
+                              "_material": {
+                                "$type": "reference",
+                                "targetId": "Reso_943",
+                                "targetType": "[FrooxEngine]FrooxEngine.PBS_RimMetallic",
+                                "id": "Reso_52FB"
+                              },
+                              "_visualOffset": {
+                                "$type": "reference",
+                                "targetId": "Reso_939",
+                                "targetType": "[FrooxEngine]FrooxEngine.IField<float3>",
+                                "id": "Reso_52FC"
+                              },
+                              "_shelfMesh": {
+                                "$type": "reference",
+                                "targetId": "Reso_942",
+                                "targetType": "[FrooxEngine]FrooxEngine.BevelStripeMesh",
+                                "id": "Reso_52FD"
+                              },
+                              "_collider": {
+                                "$type": "reference",
+                                "targetId": "Reso_944",
+                                "targetType": "[FrooxEngine]FrooxEngine.BoxCollider",
+                                "id": "Reso_52FE"
+                              }
+                            },
+                            "id": "Reso_936",
+                            "isReferenceOnly": false
+                          }

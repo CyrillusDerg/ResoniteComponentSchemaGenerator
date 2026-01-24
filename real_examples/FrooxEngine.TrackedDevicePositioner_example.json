@@ -1,0 +1,88 @@
+                  {
+                    "componentType": "[FrooxEngine]FrooxEngine.TrackedDevicePositioner",
+                    "members": {
+                      "persistent": {
+                        "$type": "bool",
+                        "value": true,
+                        "id": "Reso_4C6A"
+                      },
+                      "UpdateOrder": {
+                        "$type": "int",
+                        "value": -1000000,
+                        "id": "Reso_4C6B"
+                      },
+                      "Enabled": {
+                        "$type": "bool",
+                        "value": true,
+                        "id": "Reso_4C6C"
+                      },
+                      "DeviceIndex": {
+                        "$type": "int",
+                        "value": 74,
+                        "id": "Reso_4C6D"
+                      },
+                      "CorrespondingBodyNode": {
+                        "$type": "enum",
+                        "value": "LeftFoot",
+                        "enumType": "BodyNode",
+                        "id": "Reso_4C6E"
+                      },
+                      "AutoBodyNode": {
+                        "$type": "enum?",
+                        "value": "LeftFoot",
+                        "enumType": "BodyNode",
+                        "id": "Reso_4C6F"
+                      },
+                      "AlwaysRenderModel": {
+                        "$type": "bool",
+                        "value": false,
+                        "id": "Reso_4C70"
+                      },
+                      "ReferenceModel": {
+                        "$type": "reference",
+                        "targetId": null,
+                        "targetType": "[FrooxEngine]FrooxEngine.Slot",
+                        "id": "Reso_4C71"
+                      },
+                      "BodyNodeRoot": {
+                        "$type": "reference",
+                        "targetId": "Reso_746",
+                        "targetType": "[FrooxEngine]FrooxEngine.Slot",
+                        "id": "Reso_4C72"
+                      },
+                      "ObjectSlot": {
+                        "$type": "reference",
+                        "targetId": "Reso_750",
+                        "targetType": "[FrooxEngine]FrooxEngine.CommonAvatar.AvatarObjectSlot",
+                        "id": "Reso_4C73"
+                      },
+                      "IsTracking": {
+                        "$type": "bool",
+                        "value": true,
+                        "id": "Reso_4C74"
+                      },
+                      "IsActive": {
+                        "$type": "bool",
+                        "value": true,
+                        "id": "Reso_4C75"
+                      },
+                      "IsSimulated": {
+                        "$type": "bool",
+                        "value": true,
+                        "id": "Reso_4C76"
+                      },
+                      "CreateAvatarObjectSlot": {
+                        "$type": "bool",
+                        "value": true,
+                        "id": "Reso_4C77"
+                      },
+                      "PoseFilter": {
+                        "$type": "reference",
+                        "targetId": "Reso_5C0",
+                        "targetType": "[FrooxEngine]FrooxEngine.UserPoseController",
+                        "id": "Reso_4C78"
+                      }
+                    },
+                    "id": "Reso_745",
+                    "isReferenceOnly": false
+                  }
