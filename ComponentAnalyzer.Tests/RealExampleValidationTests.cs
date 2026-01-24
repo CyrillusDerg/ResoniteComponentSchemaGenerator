@@ -39,6 +39,7 @@ public class RealExampleValidationTests
     [InlineData("FrooxEngine.ItemShelf", "FrooxEngine.ItemShelf_example.json")]
     [InlineData("FrooxEngine.SkinnedMeshRenderer", "FrooxEngine.SkinnedMeshRenderer_example.json")]
     [InlineData("FrooxEngine.VisemeAnalyzer", "FrooxEngine.VisemeAnalyzer_example.json")]
+    [InlineData("FrooxEngine.ValueGradientDriver", "FrooxEngine.ValueGradientDriver_float3_example.json")]
     public void Schema_ValidatesRealExample(string componentName, string exampleFileName)
     {
         // Find the component type

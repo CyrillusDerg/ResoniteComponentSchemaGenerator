@@ -91,7 +91,9 @@ public class AudioOutputSchemaTests
         Assert.NotNull(sourceSchema);
         Assert.Equal("object", sourceSchema["type"]?.GetValue<string>());
         Assert.Equal("reference", sourceSchema["properties"]?["$type"]?["const"]?.GetValue<string>());
-        Assert.Contains("targetId", sourceSchema["properties"]?.AsObject().Select(p => p.Key));
+        var properties = sourceSchema["properties"]?.AsObject();
+        Assert.NotNull(properties);
+        Assert.Contains("targetId", properties.Select(p => p.Key));
     }
 
     [Fact]

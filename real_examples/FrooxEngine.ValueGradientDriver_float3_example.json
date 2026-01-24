@@ -1,0 +1,104 @@
+                                          {
+                                            "componentType": "[FrooxEngine]FrooxEngine.ValueGradientDriver<float3>",
+                                            "members": {
+                                              "persistent": {
+                                                "$type": "bool",
+                                                "value": true,
+                                                "id": "Reso_6905"
+                                              },
+                                              "UpdateOrder": {
+                                                "$type": "int",
+                                                "value": 0,
+                                                "id": "Reso_6906"
+                                              },
+                                              "Enabled": {
+                                                "$type": "bool",
+                                                "value": true,
+                                                "id": "Reso_6907"
+                                              },
+                                              "Progress": {
+                                                "$type": "float",
+                                                "value": 0.5,
+                                                "id": "Reso_6908"
+                                              },
+                                              "Target": {
+                                                "$type": "reference",
+                                                "targetId": "Reso_194C",
+                                                "targetType": "[FrooxEngine]FrooxEngine.IField<float3>",
+                                                "id": "Reso_6909"
+                                              },
+                                              "Interpolate": {
+                                                "$type": "bool",
+                                                "value": true,
+                                                "id": "Reso_690A"
+                                              },
+                                              "Points": {
+                                                "$type": "list",
+                                                "elements": [
+                                                  {
+                                                    "$type": "syncObject",
+                                                    "members": {
+                                                      "Position": {
+                                                        "$type": "float",
+                                                        "value": 0,
+                                                        "id": "Reso_690B"
+                                                      },
+                                                      "Value": {
+                                                        "$type": "float3",
+                                                        "value": {
+                                                          "x": -1,
+                                                          "y": 0.33,
+                                                          "z": 1
+                                                        },
+                                                        "id": "Reso_690C"
+                                                      }
+                                                    },
+                                                    "id": "Reso_690D"
+                                                  },
+                                                  {
+                                                    "$type": "syncObject",
+                                                    "members": {
+                                                      "Position": {
+                                                        "$type": "float",
+                                                        "value": 0.5,
+                                                        "id": "Reso_690E"
+                                                      },
+                                                      "Value": {
+                                                        "$type": "float3",
+                                                        "value": {
+                                                          "x": -1,
+                                                          "y": 1,
+                                                          "z": 1
+                                                        },
+                                                        "id": "Reso_690F"
+                                                      }
+                                                    },
+                                                    "id": "Reso_6910"
+                                                  },
+                                                  {
+                                                    "$type": "syncObject",
+                                                    "members": {
+                                                      "Position": {
+                                                        "$type": "float",
+                                                        "value": 1,
+                                                        "id": "Reso_6911"
+                                                      },
+                                                      "Value": {
+                                                        "$type": "float3",
+                                                        "value": {
+                                                          "x": -1,
+                                                          "y": 1.33,
+                                                          "z": 1
+                                                        },
+                                                        "id": "Reso_6912"
+                                                      }
+                                                    },
+                                                    "id": "Reso_6913"
+                                                  }
+                                                ],
+                                                "id": "Reso_6914"
+                                              }
+                                            },
+                                            "id": "Reso_1952",
+                                            "isReferenceOnly": false
+                                          }
