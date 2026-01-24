@@ -468,13 +468,92 @@ public class JsonSchemaGenerator
 
     private static string FormatGenericComponentTypeName(Type concreteType)
     {
-        // Format: [FrooxEngine]FrooxEngine.ValueField<int>
+        // Format: [FrooxEngine]FrooxEngine.AssetLoader<[FrooxEngine]FrooxEngine.LocaleResource>
         var genericDef = concreteType.GetGenericTypeDefinition();
         var typeArgs = concreteType.GetGenericArguments();
 
-        var typeArgStrings = typeArgs.Select(t => GetSimpleTypeName(t));
+        // Use full ResoniteLink notation for type arguments
+        var typeArgStrings = typeArgs.Select(FormatResoniteLinkTypeName);
 
         return $"[FrooxEngine]{genericDef.Namespace}.{GetBaseTypeName(genericDef)}<{string.Join(",", typeArgStrings)}>";
+    }
+
+    /// <summary>
+    /// Formats a type in full ResoniteLink notation with assembly prefixes.
+    /// E.g., "IAssetProvider&lt;LocaleResource&gt;" becomes "[FrooxEngine]FrooxEngine.IAssetProvider&lt;[FrooxEngine]FrooxEngine.LocaleResource&gt;"
+    /// Primitive types use simple names (int, bool, float, etc.)
+    /// </summary>
+    private static string FormatResoniteLinkTypeName(Type type)
+    {
+        // Check for primitive/simple types first - use simple names
+        string? simpleName = GetSimpleTypeNameOrNull(type);
+        if (simpleName != null)
+            return simpleName;
+
+        if (type.IsGenericType && !type.IsGenericTypeDefinition)
+        {
+            var genericDef = type.GetGenericTypeDefinition();
+            var typeArgs = type.GetGenericArguments();
+
+            // Format each type argument recursively
+            var typeArgStrings = typeArgs.Select(FormatResoniteLinkTypeName);
+
+            string assemblyPrefix = GetAssemblyPrefix(genericDef);
+            return $"{assemblyPrefix}{genericDef.Namespace}.{GetBaseTypeName(genericDef)}<{string.Join(",", typeArgStrings)}>";
+        }
+
+        // Non-generic type with assembly prefix
+        string prefix = GetAssemblyPrefix(type);
+        return $"{prefix}{type.FullName ?? type.Name}";
+    }
+
+    /// <summary>
+    /// Gets the simple type name for primitives and well-known types, or null if not applicable.
+    /// </summary>
+    private static string? GetSimpleTypeNameOrNull(Type type)
+    {
+        // System primitives
+        var systemName = type.FullName switch
+        {
+            "System.Boolean" => "bool",
+            "System.Byte" => "byte",
+            "System.SByte" => "sbyte",
+            "System.Int16" => "short",
+            "System.UInt16" => "ushort",
+            "System.Int32" => "int",
+            "System.UInt32" => "uint",
+            "System.Int64" => "long",
+            "System.UInt64" => "ulong",
+            "System.Single" => "float",
+            "System.Double" => "double",
+            "System.Decimal" => "decimal",
+            "System.String" => "string",
+            "System.Char" => "char",
+            "System.Uri" => "Uri",
+            _ => null
+        };
+
+        if (systemName != null)
+            return systemName;
+
+        // Elements.Core types - use simple name (e.g., float3, color, floatQ)
+        if (type.Namespace == "Elements.Core")
+        {
+            return type.Name;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the assembly prefix for a type (e.g., "[FrooxEngine]" or "[Elements.Core]").
+    /// </summary>
+    private static string GetAssemblyPrefix(Type type)
+    {
+        var assemblyName = type.Assembly?.GetName()?.Name;
+        if (string.IsNullOrEmpty(assemblyName))
+            return "";
+        return $"[{assemblyName}]";
     }
 
     private static string GetBaseTypeName(Type type)
@@ -721,6 +800,9 @@ public class JsonSchemaGenerator
 
     private JsonObject GenerateReferenceSchema(ComponentField field, Type targetType)
     {
+        // Format the target type in ResoniteLink notation
+        string formattedTargetType = FormatResoniteLinkTypeName(targetType);
+
         return new JsonObject
         {
             ["type"] = "object",
@@ -736,8 +818,8 @@ public class JsonSchemaGenerator
                 },
                 ["targetType"] = new JsonObject
                 {
-                    ["type"] = "string",
-                    ["description"] = "Type of the target (informational)"
+                    ["const"] = formattedTargetType,
+                    ["description"] = "Type of the target"
                 },
                 ["id"] = new JsonObject { ["type"] = "string" }
             },
@@ -747,6 +829,11 @@ public class JsonSchemaGenerator
 
     private JsonObject GenerateAssetRefSchema(ComponentField field, Type assetType)
     {
+        // AssetRef<T> is a reference to IAssetProvider<T>
+        // Format: [FrooxEngine]FrooxEngine.IAssetProvider<[FrooxEngine]FrooxEngine.LocaleResource>
+        string formattedAssetType = FormatResoniteLinkTypeName(assetType);
+        string targetType = $"[FrooxEngine]FrooxEngine.IAssetProvider<{formattedAssetType}>";
+
         return new JsonObject
         {
             ["type"] = "object",
@@ -762,8 +849,8 @@ public class JsonSchemaGenerator
                 },
                 ["targetType"] = new JsonObject
                 {
-                    ["type"] = "string",
-                    ["description"] = "Type of the asset (informational)"
+                    ["const"] = targetType,
+                    ["description"] = "Type of the asset provider"
                 },
                 ["id"] = new JsonObject { ["type"] = "string" }
             },
@@ -773,6 +860,9 @@ public class JsonSchemaGenerator
 
     private JsonObject GenerateFieldDriveSchema(ComponentField field, Type drivenType)
     {
+        // Format the driven type in ResoniteLink notation
+        string formattedDrivenType = FormatResoniteLinkTypeName(drivenType);
+
         return new JsonObject
         {
             ["type"] = "object",
@@ -788,8 +878,8 @@ public class JsonSchemaGenerator
                 },
                 ["targetType"] = new JsonObject
                 {
-                    ["type"] = "string",
-                    ["description"] = "Type of the driven field (informational)"
+                    ["const"] = formattedDrivenType,
+                    ["description"] = "Type of the driven field"
                 },
                 ["id"] = new JsonObject { ["type"] = "string" }
             },
