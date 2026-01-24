@@ -1,0 +1,49 @@
+                      {
+                        "componentType": "[FrooxEngine]FrooxEngine.BooleanValueDriver<float2>",
+                        "members": {
+                          "persistent": {
+                            "$type": "bool",
+                            "value": true,
+                            "id": "Reso_631D"
+                          },
+                          "UpdateOrder": {
+                            "$type": "int",
+                            "value": 0,
+                            "id": "Reso_631E"
+                          },
+                          "Enabled": {
+                            "$type": "bool",
+                            "value": true,
+                            "id": "Reso_631F"
+                          },
+                          "State": {
+                            "$type": "bool",
+                            "value": false,
+                            "id": "Reso_6320"
+                          },
+                          "TargetField": {
+                            "$type": "reference",
+                            "targetId": "Reso_6321",
+                            "targetType": "[FrooxEngine]FrooxEngine.IField<float2>",
+                            "id": "Reso_6322"
+                          },
+                          "FalseValue": {
+                            "$type": "float2",
+                            "value": {
+                              "x": 0,
+                              "y": 2500
+                            },
+                            "id": "Reso_6323"
+                          },
+                          "TrueValue": {
+                            "$type": "float2",
+                            "value": {
+                              "x": 0,
+                              "y": 25
+                            },
+                            "id": "Reso_6324"
+                          }
+                        },
+                        "id": "Reso_17BA",
+                        "isReferenceOnly": false
+                      }
