@@ -42,6 +42,98 @@ public static class PropertyAnalyzer
     }
 
     /// <summary>
+    /// Gets the first non-generic base class in the inheritance chain, if any.
+    /// This is used to identify common fields for generic types that inherit from non-generic base classes.
+    /// </summary>
+    public static Type? GetNonGenericBaseClass(Type type)
+    {
+        // Start from the direct base type
+        Type? currentType = type.BaseType;
+
+        while (currentType != null && currentType.FullName != "System.Object")
+        {
+            // If this base class is not generic, it's the non-generic base we're looking for
+            if (!currentType.IsGenericType && !currentType.ContainsGenericParameters)
+            {
+                return currentType;
+            }
+            currentType = currentType.BaseType;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets serializable fields declared only in non-generic base classes.
+    /// These fields are common to all instantiations of a generic type.
+    /// </summary>
+    public static List<ComponentField> GetFieldsFromNonGenericBaseClasses(Type type)
+    {
+        var fields = new List<ComponentField>();
+        var seenNames = new HashSet<string>();
+
+        try
+        {
+            // Find the first non-generic base class
+            Type? nonGenericBase = GetNonGenericBaseClass(type);
+            if (nonGenericBase == null)
+                return fields;
+
+            // Walk up from the non-generic base class
+            Type? currentType = nonGenericBase;
+            while (currentType != null && currentType.FullName != "System.Object")
+            {
+                var bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+
+                foreach (var field in currentType.GetFields(bindingFlags))
+                {
+                    try
+                    {
+                        if (!IsSyncWrapperType(field.FieldType))
+                            continue;
+
+                        string serializedName = GetSerializedFieldName(field);
+
+                        if (!seenNames.Add(serializedName))
+                            continue;
+
+                        fields.Add(new ComponentField(
+                            serializedName,
+                            field.FieldType,
+                            GetFriendlyTypeName(field.FieldType)
+                        ));
+                    }
+                    catch
+                    {
+                        // Skip fields that can't be analyzed
+                    }
+                }
+
+                currentType = currentType.BaseType;
+            }
+        }
+        catch
+        {
+            // Return empty list if we can't analyze
+        }
+
+        return fields;
+    }
+
+    /// <summary>
+    /// Gets serializable fields declared only in the type itself and its generic base classes,
+    /// excluding fields from non-generic base classes.
+    /// </summary>
+    public static List<ComponentField> GetFieldsExcludingNonGenericBaseClasses(Type type)
+    {
+        var allFields = GetAllSerializableFields(type);
+        var baseFields = GetFieldsFromNonGenericBaseClasses(type);
+        var baseFieldNames = new HashSet<string>(baseFields.Select(f => f.Name));
+
+        return allFields.Where(f => !baseFieldNames.Contains(f.Name)).ToList();
+    }
+
+    /// <summary>
     /// Gets all serializable Sync fields from a component type, including protected fields from base classes.
     /// Handles [NameOverride] attribute to get the correct serialized field name.
     /// </summary>
