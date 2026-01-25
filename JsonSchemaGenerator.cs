@@ -322,6 +322,20 @@ public class JsonSchemaGenerator
         string baseName = GetBaseTypeName(genericTypeDefinition);
         int successCount = 0;
 
+        // Check for common base class fields
+        string? baseMembersDefName = null;
+        var baseMembersSchema = GenerateBaseMembersSchemaWithExternalEnums(genericTypeDefinition, enumTypesNeeded);
+        if (baseMembersSchema != null)
+        {
+            baseMembersDefName = $"{baseName}_base_members";
+            localDefs[baseMembersDefName] = baseMembersSchema;
+        }
+
+        // Get the names of fields from non-generic base classes to exclude from variants
+        var baseFieldNames = new HashSet<string>(
+            PropertyAnalyzer.GetFieldsFromNonGenericBaseClasses(genericTypeDefinition)
+                .Select(f => f.Name));
+
         foreach (var typeName in allowedTypeNames)
         {
             try
@@ -334,7 +348,8 @@ public class JsonSchemaGenerator
                 string typeArgName = GetSimpleTypeName(typeArg);
                 string variantDefName = $"{baseName}_{typeArgName}";
 
-                var concreteSchema = GenerateConcreteSchemaForGenericInstanceWithExternalEnums(concreteType, typeArg, enumTypesNeeded);
+                var concreteSchema = GenerateConcreteSchemaForGenericInstanceWithExternalEnums(
+                    concreteType, typeArg, enumTypesNeeded, baseMembersDefName, baseFieldNames);
                 localDefs[variantDefName] = concreteSchema;
                 oneOfArray.Add(new JsonObject { ["$ref"] = $"#/$defs/{variantDefName}" });
                 successCount++;
@@ -410,12 +425,18 @@ public class JsonSchemaGenerator
     /// Generates a concrete schema for a generic type instance with external enum references.
     /// Uses allOf to combine common component_properties with component-specific properties.
     /// </summary>
-    private JsonObject GenerateConcreteSchemaForGenericInstanceWithExternalEnums(Type concreteType, Type typeArg, Dictionary<string, Type> enumTypesNeeded)
+    private JsonObject GenerateConcreteSchemaForGenericInstanceWithExternalEnums(
+        Type concreteType,
+        Type typeArg,
+        Dictionary<string, Type> enumTypesNeeded,
+        string? baseMembersDefName = null,
+        HashSet<string>? excludeFieldNames = null)
     {
         string typeArgName = GetSimpleTypeName(typeArg);
         string componentTypeName = $"{GetAssemblyPrefix(concreteType.GetGenericTypeDefinition())}{concreteType.GetGenericTypeDefinition().Namespace}.{GetBaseTypeName(concreteType.GetGenericTypeDefinition())}<{typeArgName}>";
 
-        var membersSchema = GenerateMembersSchemaWithExternalEnums(concreteType, enumTypesNeeded);
+        var membersSchema = GenerateMembersSchemaWithExternalEnums(
+            concreteType, enumTypesNeeded, baseMembersDefName, excludeFieldNames);
 
         return new JsonObject
         {
@@ -444,8 +465,13 @@ public class JsonSchemaGenerator
     /// <summary>
     /// Generates members schema with external enum references (pointing to enums_XX.schema.json files).
     /// Uses allOf to combine common member_properties with component-specific properties.
+    /// Optionally includes a reference to base class members for generic types.
     /// </summary>
-    private JsonObject GenerateMembersSchemaWithExternalEnums(Type componentType, Dictionary<string, Type> enumTypesNeeded)
+    private JsonObject GenerateMembersSchemaWithExternalEnums(
+        Type componentType,
+        Dictionary<string, Type> enumTypesNeeded,
+        string? baseMembersDefName = null,
+        HashSet<string>? excludeFieldNames = null)
     {
         // Common member property names that are defined in member_properties
         var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
@@ -458,6 +484,10 @@ public class JsonSchemaGenerator
         {
             // Skip common member properties - they're included via member_properties ref
             if (commonMemberNames.Contains(field.Name))
+                continue;
+
+            // Skip fields that are in the base members def (for generic types with non-generic base classes)
+            if (excludeFieldNames != null && excludeFieldNames.Contains(field.Name))
                 continue;
 
             try
@@ -475,18 +505,29 @@ public class JsonSchemaGenerator
             }
         }
 
+        // Build the allOf array
+        var allOfArray = new JsonArray
+        {
+            new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" }
+        };
+
+        // Add base members ref if provided (for generic types with non-generic base classes)
+        if (baseMembersDefName != null)
+        {
+            allOfArray.Add(new JsonObject { ["$ref"] = $"#/$defs/{baseMembersDefName}" });
+        }
+
+        // Add component-specific properties
+        allOfArray.Add(new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = componentSpecificProperties
+        });
+
         return new JsonObject
         {
             ["description"] = "Component members (fields) and their values",
-            ["allOf"] = new JsonArray
-            {
-                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" },
-                new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = componentSpecificProperties
-                }
-            },
+            ["allOf"] = allOfArray,
             ["unevaluatedProperties"] = false
         };
     }
@@ -538,6 +579,52 @@ public class JsonSchemaGenerator
                 }
             },
             ["unevaluatedProperties"] = false
+        };
+    }
+
+    /// <summary>
+    /// Generates a schema for fields from non-generic base classes.
+    /// These fields are common to all instantiations of a generic type.
+    /// </summary>
+    private JsonObject? GenerateBaseMembersSchemaWithExternalEnums(Type genericTypeDefinition, Dictionary<string, Type> enumTypesNeeded)
+    {
+        var baseFields = PropertyAnalyzer.GetFieldsFromNonGenericBaseClasses(genericTypeDefinition);
+        if (baseFields.Count == 0)
+            return null;
+
+        // Common member property names that are defined in member_properties
+        var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
+
+        var baseProperties = new JsonObject();
+        foreach (var field in baseFields.OrderBy(f => f.Name))
+        {
+            // Skip common member properties - they're included via member_properties ref
+            if (commonMemberNames.Contains(field.Name))
+                continue;
+
+            try
+            {
+                var fieldSchema = GenerateMemberSchemaWithExternalEnums(field, enumTypesNeeded);
+                baseProperties[field.Name] = fieldSchema;
+            }
+            catch
+            {
+                baseProperties[field.Name] = new JsonObject
+                {
+                    ["additionalProperties"] = false,
+                    ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
+                };
+            }
+        }
+
+        // If all base fields were common members, no need for a separate base def
+        if (baseProperties.Count == 0)
+            return null;
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = baseProperties
         };
     }
 
@@ -1859,6 +1946,20 @@ public class JsonSchemaGenerator
         string baseName = GetBaseTypeName(genericTypeDefinition);
         int successCount = 0;
 
+        // Check for common base class fields
+        string? baseMembersDefName = null;
+        var baseMembersSchema = GenerateBaseMembersSchema(genericTypeDefinition, typeDefsNeeded);
+        if (baseMembersSchema != null)
+        {
+            baseMembersDefName = $"{baseName}_base_members";
+            defs[baseMembersDefName] = baseMembersSchema;
+        }
+
+        // Get the names of fields from non-generic base classes to exclude from variants
+        var baseFieldNames = new HashSet<string>(
+            PropertyAnalyzer.GetFieldsFromNonGenericBaseClasses(genericTypeDefinition)
+                .Select(f => f.Name));
+
         // First pass: generate component variant schemas and collect needed type definitions
         var variantSchemas = new List<(string defName, JsonObject schema, Type typeArg)>();
 
@@ -1877,7 +1978,8 @@ public class JsonSchemaGenerator
                 string typeArgName = GetSimpleTypeName(typeArg);
                 string defName = $"{baseName}_{typeArgName}";
 
-                var concreteSchema = GenerateConcreteSchemaForGenericInstance(concreteType, typeArg, useRefs: true, typeDefsNeeded);
+                var concreteSchema = GenerateConcreteSchemaForGenericInstance(
+                    concreteType, typeArg, useRefs: true, typeDefsNeeded, baseMembersDefName, baseFieldNames);
                 variantSchemas.Add((defName, concreteSchema, typeArg));
                 successCount++;
             }
@@ -1927,7 +2029,13 @@ public class JsonSchemaGenerator
     /// <summary>
     /// Uses allOf to combine common component_properties with component-specific properties.
     /// </summary>
-    private JsonObject GenerateConcreteSchemaForGenericInstance(Type concreteType, Type typeArg, bool useRefs = false, Dictionary<string, Type>? typeDefsNeeded = null)
+    private JsonObject GenerateConcreteSchemaForGenericInstance(
+        Type concreteType,
+        Type typeArg,
+        bool useRefs = false,
+        Dictionary<string, Type>? typeDefsNeeded = null,
+        string? baseMembersDefName = null,
+        HashSet<string>? excludeFieldNames = null)
     {
         string componentTypeName = FormatGenericComponentTypeName(concreteType);
 
@@ -1947,7 +2055,7 @@ public class JsonSchemaGenerator
                             ["const"] = componentTypeName,
                             ["description"] = "The component type in Resonite notation"
                         },
-                        ["members"] = GenerateMembersSchema(concreteType, useRefs, typeDefsNeeded)
+                        ["members"] = GenerateMembersSchema(concreteType, useRefs, typeDefsNeeded, baseMembersDefName, excludeFieldNames)
                     }
                 }
             },
@@ -2361,9 +2469,61 @@ public class JsonSchemaGenerator
     }
 
     /// <summary>
-    /// Uses allOf to combine common member_properties with component-specific properties.
+    /// Generates a schema for fields from non-generic base classes (non-bucketed version).
+    /// These fields are common to all instantiations of a generic type.
     /// </summary>
-    private JsonObject GenerateMembersSchema(Type componentType, bool useRefs = false, Dictionary<string, Type>? typeDefsNeeded = null)
+    private JsonObject? GenerateBaseMembersSchema(Type genericTypeDefinition, Dictionary<string, Type>? typeDefsNeeded)
+    {
+        var baseFields = PropertyAnalyzer.GetFieldsFromNonGenericBaseClasses(genericTypeDefinition);
+        if (baseFields.Count == 0)
+            return null;
+
+        // Common member property names that are defined in member_properties
+        var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
+
+        var baseProperties = new JsonObject();
+        foreach (var field in baseFields.OrderBy(f => f.Name))
+        {
+            // Skip common member properties - they're included via member_properties ref
+            if (commonMemberNames.Contains(field.Name))
+                continue;
+
+            try
+            {
+                var fieldSchema = GenerateMemberSchema(field, useRefs: true, typeDefsNeeded);
+                baseProperties[field.Name] = fieldSchema;
+            }
+            catch
+            {
+                baseProperties[field.Name] = new JsonObject
+                {
+                    ["additionalProperties"] = false,
+                    ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
+                };
+            }
+        }
+
+        // If all base fields were common members, no need for a separate base def
+        if (baseProperties.Count == 0)
+            return null;
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = baseProperties
+        };
+    }
+
+    /// <summary>
+    /// Uses allOf to combine common member_properties with component-specific properties.
+    /// Optionally includes a reference to base class members for generic types.
+    /// </summary>
+    private JsonObject GenerateMembersSchema(
+        Type componentType,
+        bool useRefs = false,
+        Dictionary<string, Type>? typeDefsNeeded = null,
+        string? baseMembersDefName = null,
+        HashSet<string>? excludeFieldNames = null)
     {
         // Common member property names that are defined in member_properties
         var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
@@ -2377,6 +2537,10 @@ public class JsonSchemaGenerator
         {
             // Skip common member properties - they're included via member_properties ref
             if (commonMemberNames.Contains(field.Name))
+                continue;
+
+            // Skip fields that are in the base members def (for generic types with non-generic base classes)
+            if (excludeFieldNames != null && excludeFieldNames.Contains(field.Name))
                 continue;
 
             try
@@ -2394,18 +2558,29 @@ public class JsonSchemaGenerator
             }
         }
 
+        // Build the allOf array
+        var allOfArray = new JsonArray
+        {
+            new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" }
+        };
+
+        // Add base members ref if provided (for generic types with non-generic base classes)
+        if (baseMembersDefName != null)
+        {
+            allOfArray.Add(new JsonObject { ["$ref"] = $"#/$defs/{baseMembersDefName}" });
+        }
+
+        // Add component-specific properties
+        allOfArray.Add(new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = componentSpecificProperties
+        });
+
         return new JsonObject
         {
             ["description"] = "Component members (fields) and their values",
-            ["allOf"] = new JsonArray
-            {
-                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" },
-                new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = componentSpecificProperties
-                }
-            },
+            ["allOf"] = allOfArray,
             ["unevaluatedProperties"] = false
         };
     }

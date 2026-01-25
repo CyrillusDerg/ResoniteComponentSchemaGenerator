@@ -91,4 +91,72 @@ public class PropertyAnalyzerTests
         var friendlyName = PropertyAnalyzer.GetFriendlyTypeName(typeof(Dictionary<string, List<int>>));
         Assert.Equal("Dictionary<String, List<Int32>>", friendlyName);
     }
+
+    [Fact]
+    public void GetNonGenericBaseClass_ForFeedEntityInterface_ReturnsFeedItemInterface()
+    {
+        var feedEntityInterface = _fixture.Loader.FindComponent("FeedEntityInterface`1");
+        Assert.NotNull(feedEntityInterface);
+
+        var nonGenericBase = PropertyAnalyzer.GetNonGenericBaseClass(feedEntityInterface);
+        Assert.NotNull(nonGenericBase);
+        Assert.Equal("FeedItemInterface", nonGenericBase.Name);
+    }
+
+    [Fact]
+    public void GetFieldsFromNonGenericBaseClasses_ForAudioOutput_ReturnsComponentFields()
+    {
+        var audioOutput = _fixture.Loader.FindComponent("AudioOutput");
+        Assert.NotNull(audioOutput);
+
+        // AudioOutput inherits from Component (non-generic), so this method returns
+        // Component's fields. These are Enabled, persistent, UpdateOrder - which are
+        // already handled by member_properties. The schema generation filters these out
+        // so no separate _base_members def is created for Component-level fields.
+        var baseFields = PropertyAnalyzer.GetFieldsFromNonGenericBaseClasses(audioOutput);
+        var fieldNames = baseFields.Select(f => f.Name).ToHashSet();
+
+        // Component fields should be present
+        Assert.Contains("Enabled", fieldNames);
+        Assert.Contains("persistent", fieldNames);
+        Assert.Contains("UpdateOrder", fieldNames);
+
+        // But these are the ONLY base fields (no intermediate base class fields)
+        Assert.Equal(3, baseFields.Count);
+    }
+
+    [Fact]
+    public void GetFieldsFromNonGenericBaseClasses_ForFeedEntityInterface_ReturnsBaseFields()
+    {
+        var feedEntityInterface = _fixture.Loader.FindComponent("FeedEntityInterface`1");
+        Assert.NotNull(feedEntityInterface);
+
+        var baseFields = PropertyAnalyzer.GetFieldsFromNonGenericBaseClasses(feedEntityInterface);
+        Assert.NotEmpty(baseFields);
+
+        // FeedItemInterface should have fields like HasData, HasDescription, etc.
+        var fieldNames = baseFields.Select(f => f.Name).ToList();
+        Assert.Contains("HasData", fieldNames);
+    }
+
+    [Fact]
+    public void GetFieldsExcludingNonGenericBaseClasses_ForFeedEntityInterface_ExcludesBaseFields()
+    {
+        var feedEntityInterface = _fixture.Loader.FindComponent("FeedEntityInterface`1");
+        Assert.NotNull(feedEntityInterface);
+
+        var allFields = PropertyAnalyzer.GetAllSerializableFields(feedEntityInterface);
+        var excludedFields = PropertyAnalyzer.GetFieldsExcludingNonGenericBaseClasses(feedEntityInterface);
+        var baseFields = PropertyAnalyzer.GetFieldsFromNonGenericBaseClasses(feedEntityInterface);
+
+        // Excluded fields + base fields should equal all fields (minus common ones)
+        var excludedNames = excludedFields.Select(f => f.Name).ToHashSet();
+        var baseNames = baseFields.Select(f => f.Name).ToHashSet();
+
+        // Base field names should not be in excluded fields
+        foreach (var baseName in baseNames)
+        {
+            Assert.DoesNotContain(baseName, excludedNames);
+        }
+    }
 }
