@@ -158,7 +158,7 @@ public class SchemaValidator
     }
 
     /// <summary>
-    /// Validates a JSON file against a schema, automatically loading common.schema.json if present.
+    /// Validates a JSON file against a schema, automatically loading supporting schemas if present.
     /// </summary>
     /// <param name="jsonPath">Path to the JSON file to validate.</param>
     /// <param name="schemaPath">Path to the JSON schema file.</param>
@@ -168,14 +168,201 @@ public class SchemaValidator
     {
         schemaDirectory ??= Path.GetDirectoryName(schemaPath) ?? ".";
 
-        // Register common.schema.json if it exists
+        // Register common schema
         var commonSchemaPath = Path.Combine(schemaDirectory, "common.schema.json");
         if (File.Exists(commonSchemaPath))
         {
             RegisterSchema(commonSchemaPath);
         }
 
+        // Register all chunked schema files (components_XX.schema.json and enums_XX.schema.json)
+        foreach (var prefix in new[] { "components", "enums" })
+        {
+            for (int bucket = 0; bucket < 256; bucket++)
+            {
+                string bucketFileName = JsonSchemaGenerator.GetBucketSchemaFileName(bucket, prefix);
+                var bucketSchemaPath = Path.Combine(schemaDirectory, bucketFileName);
+                if (File.Exists(bucketSchemaPath))
+                {
+                    RegisterSchema(bucketSchemaPath);
+                }
+            }
+        }
+
         return Validate(jsonPath, schemaPath);
+    }
+
+    /// <summary>
+    /// Validates a JSON file against resonitelink.schema.json by extracting the componentType,
+    /// computing the hash bucket, and validating against the specific chunked schema file.
+    /// This is much faster than validating against the entire oneOf array.
+    /// </summary>
+    /// <param name="jsonPath">Path to the JSON file to validate.</param>
+    /// <param name="schemaDirectory">Directory containing the schema files.</param>
+    /// <returns>Validation result with details.</returns>
+    public ValidationResult ValidateAgainstResoniteLink(string jsonPath, string schemaDirectory)
+    {
+        // Read and parse the JSON to extract componentType
+        string jsonText;
+        try
+        {
+            jsonText = File.ReadAllText(jsonPath);
+        }
+        catch (Exception ex)
+        {
+            return new ValidationResult
+            {
+                IsValid = false,
+                Errors = [$"Failed to read JSON file: {ex.Message}"]
+            };
+        }
+
+        JsonNode? jsonNode;
+        try
+        {
+            jsonNode = JsonNode.Parse(jsonText);
+        }
+        catch (JsonException ex)
+        {
+            return new ValidationResult
+            {
+                IsValid = false,
+                Errors = [$"Failed to parse JSON: {ex.Message}"]
+            };
+        }
+
+        // Extract componentType
+        var componentType = jsonNode?["componentType"]?.GetValue<string>();
+        if (string.IsNullOrEmpty(componentType))
+        {
+            return new ValidationResult
+            {
+                IsValid = false,
+                Errors = ["JSON does not contain a 'componentType' property"]
+            };
+        }
+
+        // Parse componentType to get the type name and assembly prefix
+        // Format: "[AssemblyName]Namespace.TypeName" or "[AssemblyName]Namespace.TypeName<GenericArg>"
+        string assemblyPrefix = "";
+        string typeName = componentType;
+        if (componentType.StartsWith('['))
+        {
+            int closeBracket = componentType.IndexOf(']');
+            if (closeBracket > 0 && closeBracket < componentType.Length - 1)
+            {
+                assemblyPrefix = componentType[..(closeBracket + 1)];
+                typeName = componentType[(closeBracket + 1)..];
+            }
+        }
+
+        // Convert to safe def name (replace backtick with underscore for generic types)
+        string defName = typeName.Replace('`', '_');
+
+        // For generic types with type arguments like "FrooxEngine.ValueField<bool>",
+        // we need to find the base generic type definition and compute bucket based on it
+        string baseDefName = defName;
+        string baseComponentType = componentType; // componentType for bucket computation
+        int angleIndex = defName.IndexOf('<');
+        if (angleIndex > 0)
+        {
+            // Extract base type name and count type arguments
+            string baseName = defName[..angleIndex];
+            string argsSection = defName[(angleIndex + 1)..^1]; // Remove < and >
+            int argCount = argsSection.Split(',').Length;
+            baseDefName = $"{baseName}_{argCount}";
+
+            // Reconstruct the componentType for the generic definition (for bucket hash)
+            // e.g., "[FrooxEngine]FrooxEngine.ValueCopy<bool>" -> "[FrooxEngine]FrooxEngine.ValueCopy`1"
+            baseComponentType = $"{assemblyPrefix}{baseName}`{argCount}";
+        }
+
+        // Compute the bucket hash based on the generic definition componentType (if generic) or the actual componentType
+        int bucket = JsonSchemaGenerator.GetComponentTypeBucket(baseComponentType);
+
+        // Register common schema
+        var commonSchemaPath = Path.Combine(schemaDirectory, "common.schema.json");
+        if (File.Exists(commonSchemaPath))
+        {
+            RegisterSchema(commonSchemaPath);
+        }
+
+        // Register all enum bucket files (needed for $ref resolution)
+        for (int enumBucket = 0; enumBucket < 256; enumBucket++)
+        {
+            string enumBucketFileName = JsonSchemaGenerator.GetBucketSchemaFileName(enumBucket, "enums");
+            var enumSchemaPath = Path.Combine(schemaDirectory, enumBucketFileName);
+            if (File.Exists(enumSchemaPath))
+            {
+                RegisterSchema(enumSchemaPath);
+            }
+        }
+
+        // Try to find the schema definition in the component bucket file
+        // (ProtoFlux and FrooxEngine components are now combined)
+        string? schemaJson = null;
+
+        foreach (var prefix in new[] { "components" })
+        {
+            string bucketFileName = JsonSchemaGenerator.GetBucketSchemaFileName(bucket, prefix);
+            var schemaPath = Path.Combine(schemaDirectory, bucketFileName);
+            if (!File.Exists(schemaPath)) continue;
+
+            // Register this bucket schema for $ref resolution
+            RegisterSchema(schemaPath);
+
+            try
+            {
+                var schemaNode = JsonNode.Parse(File.ReadAllText(schemaPath));
+                var defs = schemaNode?["$defs"]?.AsObject();
+                if (defs == null) continue;
+
+                // Try exact match first, then base type name for generics
+                JsonNode? defNode = null;
+                if (defs.ContainsKey(defName))
+                {
+                    defNode = defs[defName];
+                }
+                else if (defName != baseDefName && defs.ContainsKey(baseDefName))
+                {
+                    defNode = defs[baseDefName];
+                }
+
+                if (defNode != null)
+                {
+                    // Create a standalone schema from the definition
+                    var standaloneSchema = new JsonObject
+                    {
+                        ["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+                    };
+
+                    // Copy all properties from the def
+                    foreach (var prop in defNode.AsObject())
+                    {
+                        standaloneSchema[prop.Key] = prop.Value?.DeepClone();
+                    }
+
+                    schemaJson = standaloneSchema.ToJsonString();
+                    break;
+                }
+            }
+            catch
+            {
+                continue;
+            }
+        }
+
+        if (schemaJson == null)
+        {
+            return new ValidationResult
+            {
+                IsValid = false,
+                Errors = [$"No schema found for component type '{componentType}' in bucket {bucket:X2} (looked for '{defName}' and '{baseDefName}')"]
+            };
+        }
+
+        // Validate
+        return ValidateJson(jsonText, schemaJson);
     }
 
     private static List<string> ExtractErrors(EvaluationResults result)
