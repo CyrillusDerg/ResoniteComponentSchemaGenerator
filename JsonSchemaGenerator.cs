@@ -29,6 +29,42 @@ public class JsonSchemaGenerator
     }
 
     /// <summary>
+    /// Computes a hash bucket (0-255) for a componentType string.
+    /// This is used to distribute components across 256 schema files for faster validation.
+    /// </summary>
+    /// <param name="componentType">The componentType string (e.g., "[FrooxEngine]FrooxEngine.AudioOutput").</param>
+    /// <returns>A value from 0 to 255.</returns>
+    public static int GetComponentTypeBucket(string componentType)
+    {
+        // Use a simple hash: sum of all character codes modulo 256
+        int hash = 0;
+        foreach (char c in componentType)
+        {
+            hash = (hash + c) % 256;
+        }
+        return hash;
+    }
+
+    /// <summary>
+    /// Gets the schema filename for a given bucket number.
+    /// </summary>
+    /// <param name="bucket">Bucket number (0-255).</param>
+    /// <param name="prefix">Prefix for the filename ("components" or "protoflux").</param>
+    /// <returns>Filename like "components_A3.schema.json".</returns>
+    public static string GetBucketSchemaFileName(int bucket, string prefix)
+    {
+        return $"{prefix}_{bucket:X2}.schema.json";
+    }
+
+    /// <summary>
+    /// Gets the componentType string for a Type in ResoniteLink format.
+    /// </summary>
+    private string GetComponentTypeString(Type type)
+    {
+        return $"{GetAssemblyPrefix(type)}{type.FullName}";
+    }
+
+    /// <summary>
     /// Creates a safe schema $id from a type name, replacing characters that cause URI resolution issues.
     /// </summary>
     private static string GetSafeSchemaId(Type type)
@@ -68,63 +104,717 @@ public class JsonSchemaGenerator
     }
 
     /// <summary>
-    /// Generates a combined schema containing all ProtoFlux node types in $defs.
-    /// Each node type gets its own definition, keyed by a safe version of its full type name.
+    /// Generates all chunked schemas: components (including ProtoFlux), enums, and the main schema.
+    /// Components and ProtoFlux nodes are combined into components_XX.schema.json files.
+    /// Enums are placed in enums_XX.schema.json files.
     /// </summary>
-    /// <param name="protoFluxTypes">The ProtoFlux node types to include.</param>
-    /// <returns>A combined JSON schema with all nodes in $defs.</returns>
-    public JsonObject GenerateProtoFluxCombinedSchema(IEnumerable<Type> protoFluxTypes)
+    /// <param name="componentTypes">All component types (FrooxEngine components and ProtoFlux nodes).</param>
+    /// <returns>Component bucket schemas, enum bucket schemas, and the main all_components schema.</returns>
+    public (Dictionary<int, JsonObject> ComponentBuckets, Dictionary<int, JsonObject> EnumBuckets, JsonObject MainSchema)
+        GenerateAllChunkedSchemas(IEnumerable<Type> componentTypes)
     {
-        var defs = new JsonObject();
-        var allTypeDefsNeeded = new Dictionary<string, Type>();
-        int successCount = 0;
-        int errorCount = 0;
+        // First pass: collect all types and their required enum types
+        var typesList = componentTypes.ToList();
+        var allEnumTypes = new Dictionary<string, Type>(); // defName -> Type
+        var componentsByBucket = new Dictionary<int, List<Type>>();
 
-        foreach (var type in protoFluxTypes.OrderBy(t => t.FullName))
+        for (int i = 0; i < 256; i++)
+        {
+            componentsByBucket[i] = new List<Type>();
+        }
+
+        // Group components by bucket
+        foreach (var type in typesList)
+        {
+            string componentType = GetComponentTypeString(type);
+            int bucket = GetComponentTypeBucket(componentType);
+            componentsByBucket[bucket].Add(type);
+        }
+
+        // Generate component schemas and collect enum types
+        var componentBuckets = new Dictionary<int, JsonObject>();
+        int totalComponentSuccess = 0;
+        int totalComponentError = 0;
+
+        foreach (var (bucket, bucketTypes) in componentsByBucket.Where(b => b.Value.Count > 0))
+        {
+            var defs = new JsonObject();
+            var enumTypesNeeded = new Dictionary<string, Type>();
+
+            foreach (var type in bucketTypes.OrderBy(t => t.FullName))
+            {
+                try
+                {
+                    string defName = GetSafeDefName(type);
+                    var nodeSchema = GenerateSchemaForDefWithExternalEnums(type, enumTypesNeeded);
+                    defs[defName] = nodeSchema;
+                    totalComponentSuccess++;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Error generating schema for {type.FullName}: {ex.Message}");
+                    totalComponentError++;
+                }
+            }
+
+            // Merge enum types into the global collection
+            foreach (var (enumDefName, enumType) in enumTypesNeeded)
+            {
+                allEnumTypes.TryAdd(enumDefName, enumType);
+            }
+
+            string schemaFileName = GetBucketSchemaFileName(bucket, "components");
+            componentBuckets[bucket] = new JsonObject
+            {
+                ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
+                ["$id"] = schemaFileName,
+                ["title"] = $"Components (Bucket {bucket:X2})",
+                ["description"] = $"Schema chunk {bucket:X2} containing {bucketTypes.Count} component(s)",
+                ["$defs"] = defs
+            };
+        }
+
+        Console.WriteLine($"Generated {totalComponentSuccess} component schema(s) across {componentBuckets.Count} bucket file(s)");
+        if (totalComponentError > 0)
+        {
+            Console.WriteLine($"Failed: {totalComponentError}");
+        }
+
+        // Generate enum bucket schemas
+        var enumBuckets = new Dictionary<int, JsonObject>();
+        var enumsByBucket = new Dictionary<int, List<(string DefName, Type EnumType)>>();
+
+        for (int i = 0; i < 256; i++)
+        {
+            enumsByBucket[i] = new List<(string, Type)>();
+        }
+
+        foreach (var (defName, enumType) in allEnumTypes)
+        {
+            int bucket = GetComponentTypeBucket(defName);
+            enumsByBucket[bucket].Add((defName, enumType));
+        }
+
+        foreach (var (bucket, enumDefs) in enumsByBucket.Where(b => b.Value.Count > 0))
+        {
+            var defs = new JsonObject();
+
+            foreach (var (defName, enumType) in enumDefs.OrderBy(e => e.DefName))
+            {
+                var enumSchema = GenerateEnumValueDefinition(enumType);
+                if (enumSchema != null)
+                {
+                    defs[defName] = enumSchema;
+                }
+            }
+
+            string schemaFileName = GetBucketSchemaFileName(bucket, "enums");
+            enumBuckets[bucket] = new JsonObject
+            {
+                ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
+                ["$id"] = schemaFileName,
+                ["title"] = $"Enums (Bucket {bucket:X2})",
+                ["description"] = $"Enum definitions chunk {bucket:X2} containing {enumDefs.Count} enum(s)",
+                ["$defs"] = defs
+            };
+        }
+
+        Console.WriteLine($"Generated {allEnumTypes.Count} enum definition(s) across {enumBuckets.Count} bucket file(s)");
+
+        // Generate main schema that references all component bucket files
+        var oneOfRefs = new JsonArray();
+        foreach (var (bucket, schema) in componentBuckets.OrderBy(b => b.Key))
+        {
+            var defs = schema["$defs"]?.AsObject();
+            if (defs == null) continue;
+
+            string schemaFileName = GetBucketSchemaFileName(bucket, "components");
+            foreach (var kvp in defs.OrderBy(k => k.Key))
+            {
+                var def = kvp.Value?.AsObject();
+                if (def != null && IsComponentSchema(def))
+                {
+                    oneOfRefs.Add(new JsonObject
+                    {
+                        ["$ref"] = $"{schemaFileName}#/$defs/{kvp.Key}"
+                    });
+                }
+            }
+        }
+
+        var mainSchema = new JsonObject
+        {
+            ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
+            ["$id"] = "all_components.schema.json",
+            ["title"] = "All Components",
+            ["description"] = $"Combined schema referencing all component types across {componentBuckets.Count} chunk file(s)",
+            ["oneOf"] = oneOfRefs
+        };
+
+        return (componentBuckets, enumBuckets, mainSchema);
+    }
+
+    /// <summary>
+    /// Generates a schema for a component type, collecting enum types separately for external reference.
+    /// </summary>
+    private JsonObject GenerateSchemaForDefWithExternalEnums(Type componentType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        // Check if this is a generic type with GenericTypes attribute
+        if (componentType.IsGenericTypeDefinition && _genericResolver != null)
+        {
+            var allowedTypeNames = _genericResolver.GetAllowedTypeNamesForGeneric(componentType);
+            if (allowedTypeNames != null && allowedTypeNames.Length > 0)
+            {
+                return GenerateGenericOneOfSchemaForDefWithExternalEnums(componentType, allowedTypeNames, enumTypesNeeded);
+            }
+        }
+
+        // For generic type definitions without known allowed types, generate a flexible schema
+        if (componentType.IsGenericTypeDefinition)
+        {
+            return GenerateFlexibleGenericSchemaForDefWithExternalEnums(componentType, enumTypesNeeded);
+        }
+
+        return GenerateConcreteSchemaForDefWithExternalEnums(componentType, enumTypesNeeded);
+    }
+
+    /// <summary>
+    /// Generates a concrete component schema with enum references pointing to external enum bucket files.
+    /// </summary>
+    private JsonObject GenerateConcreteSchemaForDefWithExternalEnums(Type componentType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        string componentTypeName = $"{GetAssemblyPrefix(componentType)}{componentType.FullName}";
+        var membersSchema = GenerateMembersSchemaWithExternalEnums(componentType, enumTypesNeeded);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["title"] = componentType.Name,
+            ["description"] = $"ResoniteLink schema for {componentType.FullName}",
+            ["properties"] = new JsonObject
+            {
+                ["componentType"] = new JsonObject
+                {
+                    ["const"] = componentTypeName,
+                    ["description"] = "The component type in Resonite notation"
+                },
+                ["members"] = membersSchema,
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+        };
+    }
+
+    /// <summary>
+    /// Generates a oneOf schema for generic types with external enum references.
+    /// </summary>
+    private JsonObject GenerateGenericOneOfSchemaForDefWithExternalEnums(Type genericTypeDefinition, string[] allowedTypeNames, Dictionary<string, Type> enumTypesNeeded)
+    {
+        var oneOfArray = new JsonArray();
+        var localDefs = new JsonObject();
+        string baseName = GetBaseTypeName(genericTypeDefinition);
+        int successCount = 0;
+
+        foreach (var typeName in allowedTypeNames)
         {
             try
             {
-                string defName = GetSafeDefName(type);
-                var nodeSchema = GenerateSchemaForDef(type, allTypeDefsNeeded);
-                defs[defName] = nodeSchema;
+                var typeArg = _loader.FindTypeByFullName(typeName);
+                if (typeArg == null)
+                    continue;
+
+                var concreteType = genericTypeDefinition.MakeGenericType(typeArg);
+                string typeArgName = GetSimpleTypeName(typeArg);
+                string variantDefName = $"{baseName}_{typeArgName}";
+
+                var concreteSchema = GenerateConcreteSchemaForGenericInstanceWithExternalEnums(concreteType, typeArg, enumTypesNeeded);
+                localDefs[variantDefName] = concreteSchema;
+                oneOfArray.Add(new JsonObject { ["$ref"] = $"#/$defs/{variantDefName}" });
                 successCount++;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"  Error generating schema for {type.FullName}: {ex.Message}");
-                errorCount++;
+                // Skip types that fail
             }
         }
 
-        // Add any needed local type definitions (enums, etc.) that aren't in common schema
-        var localTypeDefs = allTypeDefsNeeded
-            .Where(kvp => !UseExternalCommonSchema || !IsCommonTypeDefinition(kvp.Key))
-            .OrderBy(kvp => kvp.Key)
-            .ToList();
-
-        foreach (var (typeDefName, type) in localTypeDefs)
+        var schema = new JsonObject
         {
-            var typeDef = GenerateTypeValueDefinitionFromType(type);
-            if (typeDef != null)
+            ["title"] = baseName,
+            ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} with {successCount} type variant(s)"
+        };
+
+        if (oneOfArray.Count > 0)
+        {
+            schema["oneOf"] = oneOfArray;
+        }
+
+        if (localDefs.Count > 0)
+        {
+            schema["$defs"] = localDefs;
+        }
+
+        return schema;
+    }
+
+    /// <summary>
+    /// Generates a flexible schema for generic types without [GenericTypes] attribute, with external enum references.
+    /// </summary>
+    private JsonObject GenerateFlexibleGenericSchemaForDefWithExternalEnums(Type genericTypeDefinition, Dictionary<string, Type> enumTypesNeeded)
+    {
+        string baseName = GetBaseTypeName(genericTypeDefinition);
+        string assemblyPrefix = GetAssemblyPrefix(genericTypeDefinition);
+        string ns = genericTypeDefinition.Namespace ?? "";
+
+        string escapedAssemblyPrefix = EscapeForJsonRegex(assemblyPrefix);
+        string escapedNamespace = EscapeForJsonRegex(ns);
+        string escapedBaseName = EscapeForJsonRegex(baseName);
+        string componentTypePattern = $"^{escapedAssemblyPrefix}{escapedNamespace}\\.{escapedBaseName}<.+>$";
+
+        var membersSchema = GenerateFlexibleMembersSchemaWithExternalEnums(genericTypeDefinition, enumTypesNeeded);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["title"] = baseName,
+            ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} (generic type - accepts any valid type argument)",
+            ["properties"] = new JsonObject
             {
-                defs[typeDefName] = typeDef;
+                ["componentType"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["pattern"] = componentTypePattern,
+                    ["description"] = "The component type in Resonite notation (matches any valid type argument)"
+                },
+                ["members"] = membersSchema,
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+        };
+    }
+
+    /// <summary>
+    /// Generates a concrete schema for a generic type instance with external enum references.
+    /// </summary>
+    private JsonObject GenerateConcreteSchemaForGenericInstanceWithExternalEnums(Type concreteType, Type typeArg, Dictionary<string, Type> enumTypesNeeded)
+    {
+        string typeArgName = GetSimpleTypeName(typeArg);
+        string componentTypeName = $"{GetAssemblyPrefix(concreteType.GetGenericTypeDefinition())}{concreteType.GetGenericTypeDefinition().Namespace}.{GetBaseTypeName(concreteType.GetGenericTypeDefinition())}<{typeArgName}>";
+
+        var membersSchema = GenerateMembersSchemaWithExternalEnums(concreteType, enumTypesNeeded);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["title"] = $"{GetBaseTypeName(concreteType.GetGenericTypeDefinition())}<{typeArgName}>",
+            ["properties"] = new JsonObject
+            {
+                ["componentType"] = new JsonObject
+                {
+                    ["const"] = componentTypeName,
+                    ["description"] = "The component type in Resonite notation"
+                },
+                ["members"] = membersSchema,
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+        };
+    }
+
+    /// <summary>
+    /// Generates members schema with external enum references (pointing to enums_XX.schema.json files).
+    /// </summary>
+    private JsonObject GenerateMembersSchemaWithExternalEnums(Type componentType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        var membersSchema = new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "Component members (fields) and their values",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject()
+        };
+
+        var properties = (JsonObject)membersSchema["properties"]!;
+
+        var allFields = PropertyAnalyzer.GetAllSerializableFields(componentType);
+
+        foreach (var field in allFields.OrderBy(f => f.Name))
+        {
+            try
+            {
+                var fieldSchema = GenerateMemberSchemaWithExternalEnums(field, enumTypesNeeded);
+                properties[field.Name] = fieldSchema;
+            }
+            catch
+            {
+                properties[field.Name] = new JsonObject
+                {
+                    ["additionalProperties"] = false,
+                    ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
+                };
             }
         }
 
-        Console.WriteLine($"Generated {successCount} ProtoFlux node schema(s)");
-        if (errorCount > 0)
+        return membersSchema;
+    }
+
+    /// <summary>
+    /// Generates flexible members schema for generic types with external enum references.
+    /// </summary>
+    private JsonObject GenerateFlexibleMembersSchemaWithExternalEnums(Type genericTypeDefinition, Dictionary<string, Type> enumTypesNeeded)
+    {
+        var membersSchema = new JsonObject
         {
-            Console.WriteLine($"Failed: {errorCount}");
+            ["type"] = "object",
+            ["description"] = "Component members (fields) and their values",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject()
+        };
+
+        var properties = (JsonObject)membersSchema["properties"]!;
+
+        var allFields = PropertyAnalyzer.GetAllSerializableFields(genericTypeDefinition);
+
+        foreach (var field in allFields.OrderBy(f => f.Name))
+        {
+            try
+            {
+                var fieldSchema = GenerateMemberSchemaWithExternalEnums(field, enumTypesNeeded);
+                properties[field.Name] = fieldSchema;
+            }
+            catch
+            {
+                properties[field.Name] = new JsonObject
+                {
+                    ["additionalProperties"] = false,
+                    ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
+                };
+            }
+        }
+
+        return membersSchema;
+    }
+
+    /// <summary>
+    /// Generates a member schema with external enum references.
+    /// </summary>
+    private JsonObject GenerateMemberSchemaWithExternalEnums(ComponentField field, Dictionary<string, Type> enumTypesNeeded)
+    {
+        string wrapperType = GetWrapperTypeName(field.FieldType);
+        Type innerType = UnwrapFrooxEngineType(field.FieldType);
+
+        return wrapperType switch
+        {
+            "SyncList" => GenerateSyncListSchemaWithExternalEnums(field, innerType, enumTypesNeeded),
+            "SyncRefList" => GenerateSyncRefListSchema(field, innerType),
+            "SyncAssetList" => GenerateSyncAssetListSchema(field, innerType),
+            "SyncFieldList" => GenerateSyncFieldListSchemaWithExternalEnums(field, innerType, enumTypesNeeded),
+            "SyncRef" or "RelayRef" or "DestroyRelayRef" => GenerateReferenceSchemaWithExternalEnums(field, innerType, enumTypesNeeded),
+            "AssetRef" => GenerateAssetRefSchema(field, innerType),
+            "FieldDrive" => GenerateFieldDriveSchemaWithExternalEnums(field, innerType, enumTypesNeeded),
+            "DriveRef" => GenerateDriveRefSchema(field, innerType),
+            "RawOutput" => GenerateRawOutputSchema(field, innerType),
+            _ => GenerateFieldSchemaWithExternalEnums(field, innerType, enumTypesNeeded)
+        };
+    }
+
+    /// <summary>
+    /// Generates a field schema with external enum references.
+    /// </summary>
+    private JsonObject GenerateFieldSchemaWithExternalEnums(ComponentField field, Type innerType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        string? resoniteLinkType = GetResoniteLinkType(innerType);
+
+        if (resoniteLinkType == null)
+        {
+            return new JsonObject
+            {
+                ["type"] = "object",
+                ["additionalProperties"] = false,
+                ["description"] = $"Field type: {field.FriendlyTypeName}"
+            };
+        }
+
+        string? typeDefName = GetTypeDefinitionName(innerType);
+        if (typeDefName != null)
+        {
+            // Check if it's an enum type
+            if (innerType.IsEnum)
+            {
+                // Add to enum types needed and return ref to enum bucket
+                enumTypesNeeded.TryAdd(typeDefName, innerType);
+                int enumBucket = GetComponentTypeBucket(typeDefName);
+                string enumSchemaFile = GetBucketSchemaFileName(enumBucket, "enums");
+                return new JsonObject
+                {
+                    ["$ref"] = $"{enumSchemaFile}#/$defs/{typeDefName}"
+                };
+            }
+            else if (IsCommonTypeDefinition(typeDefName))
+            {
+                // Use common schema ref for non-enum common types
+                return new JsonObject
+                {
+                    ["$ref"] = $"{CommonSchemaFileName}#/$defs/{typeDefName}"
+                };
+            }
+        }
+
+        // Fallback: inline the schema
+        return GenerateValueSchema(innerType, resoniteLinkType);
+    }
+
+    /// <summary>
+    /// Generates a reference schema with external enum support.
+    /// </summary>
+    private JsonObject GenerateReferenceSchemaWithExternalEnums(ComponentField field, Type targetType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        if (UseExternalCommonSchema && IsIFieldType(targetType, out Type? fieldInnerType) && fieldInnerType != null)
+        {
+            string? resoniteLinkType = GetResoniteLinkType(fieldInnerType);
+            if (resoniteLinkType != null && IsCommonInnerType(resoniteLinkType))
+            {
+                string refName = $"IField_{resoniteLinkType}_ref";
+                return new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/{refName}" };
+            }
+        }
+
+        return GenerateReferenceSchema(field, targetType);
+    }
+
+    /// <summary>
+    /// Generates a FieldDrive schema with external enum support.
+    /// </summary>
+    private JsonObject GenerateFieldDriveSchemaWithExternalEnums(ComponentField field, Type drivenType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        if (UseExternalCommonSchema)
+        {
+            string? resoniteLinkType = GetResoniteLinkType(drivenType);
+            if (resoniteLinkType != null && IsCommonInnerType(resoniteLinkType))
+            {
+                string refName = $"IField_{resoniteLinkType}_ref";
+                return new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/{refName}" };
+            }
+        }
+
+        return GenerateFieldDriveSchema(field, drivenType);
+    }
+
+    /// <summary>
+    /// Generates a SyncList schema with external enum references.
+    /// </summary>
+    private JsonObject GenerateSyncListSchemaWithExternalEnums(ComponentField field, Type elementType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        var elementSchema = GenerateFieldSchemaWithExternalEnums(
+            new ComponentField("element", elementType, PropertyAnalyzer.GetFriendlyTypeName(elementType)),
+            elementType,
+            enumTypesNeeded);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "syncList" },
+                ["elements"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["items"] = elementSchema
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    /// <summary>
+    /// Generates a SyncFieldList schema with external enum references.
+    /// </summary>
+    private JsonObject GenerateSyncFieldListSchemaWithExternalEnums(ComponentField field, Type elementType, Dictionary<string, Type> enumTypesNeeded)
+    {
+        var elementSchema = GenerateFieldSchemaWithExternalEnums(
+            new ComponentField("element", elementType, PropertyAnalyzer.GetFriendlyTypeName(elementType)),
+            elementType,
+            enumTypesNeeded);
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "syncList" },
+                ["elements"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["items"] = elementSchema
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    /// <summary>
+    /// Generates an enum value definition schema for use in enums_XX.schema.json files.
+    /// </summary>
+    private JsonObject? GenerateEnumValueDefinition(Type enumType)
+    {
+        if (!enumType.IsEnum)
+            return null;
+
+        var valueSchema = new JsonObject { ["type"] = "string" };
+        try
+        {
+            var enumValues = new JsonArray();
+            foreach (var name in Enum.GetNames(enumType))
+            {
+                enumValues.Add(name);
+            }
+            valueSchema["enum"] = enumValues;
+        }
+        catch { }
+
+        return new JsonObject
+        {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = new JsonObject
+            {
+                ["$type"] = new JsonObject { ["const"] = "enum" },
+                ["value"] = valueSchema,
+                ["enumType"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["const"] = enumType.Name,
+                    ["description"] = "The enum type name"
+                },
+                ["id"] = new JsonObject { ["type"] = "string" }
+            },
+            ["required"] = new JsonArray { "$type", "id" }
+        };
+    }
+
+    /// <summary>
+    /// Generates the combined ResoniteLink schema that references all chunked component schema files.
+    /// </summary>
+    /// <param name="outputDir">The directory containing the chunked schema files.</param>
+    /// <returns>The combined ResoniteLink schema, or null if no schema files exist.</returns>
+    public static JsonObject? GenerateResoniteLinkSchema(string outputDir)
+    {
+        var oneOfRefs = new JsonArray();
+
+        // Process chunked component schema files (components_00.schema.json through components_FF.schema.json)
+        // These now include both FrooxEngine components and ProtoFlux nodes
+        int componentCount = AddRefsFromChunkedSchemas(outputDir, "components", oneOfRefs);
+
+        if (oneOfRefs.Count == 0)
+        {
+            return null;
         }
 
         return new JsonObject
         {
             ["$schema"] = "https://json-schema.org/draft/2020-12/schema",
-            ["$id"] = "protoflux.schema.json",
-            ["title"] = "ProtoFlux Nodes",
-            ["description"] = "Combined schema containing all ProtoFlux node types for ResoniteLink",
-            ["$defs"] = defs
+            ["$id"] = "resonitelink.schema.json",
+            ["title"] = "ResoniteLink Schema",
+            ["description"] = $"Combined schema for validating ResoniteLink component data. References {componentCount} component/node type(s).",
+            ["oneOf"] = oneOfRefs
         };
+    }
+
+    /// <summary>
+    /// Adds $refs from all chunked schema files with the given prefix to the oneOfRefs array.
+    /// </summary>
+    private static int AddRefsFromChunkedSchemas(string outputDir, string prefix, JsonArray oneOfRefs)
+    {
+        int count = 0;
+
+        for (int bucket = 0; bucket < 256; bucket++)
+        {
+            string schemaFileName = GetBucketSchemaFileName(bucket, prefix);
+            string schemaPath = Path.Combine(outputDir, schemaFileName);
+
+            if (!File.Exists(schemaPath)) continue;
+
+            try
+            {
+                var schemaJson = JsonNode.Parse(File.ReadAllText(schemaPath));
+                var defs = schemaJson?["$defs"]?.AsObject();
+                if (defs == null) continue;
+
+                foreach (var kvp in defs.OrderBy(k => k.Key))
+                {
+                    var def = kvp.Value?.AsObject();
+                    if (def != null && IsComponentSchema(def))
+                    {
+                        oneOfRefs.Add(new JsonObject
+                        {
+                            ["$ref"] = $"{schemaFileName}#/$defs/{kvp.Key}"
+                        });
+                        count++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not read {schemaFileName}: {ex.Message}");
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Checks if a schema definition is a component schema (has componentType in properties, or is a oneOf of component schemas).
+    /// </summary>
+    private static bool IsComponentSchema(JsonObject def)
+    {
+        // Check for direct componentType in properties
+        var properties = def["properties"]?.AsObject();
+        if (properties != null && properties.ContainsKey("componentType"))
+        {
+            return true;
+        }
+
+        // Check for oneOf (generic components use this pattern)
+        if (def.ContainsKey("oneOf"))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

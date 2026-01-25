@@ -230,29 +230,132 @@ static int GenerateSchemas(ComponentLoader loader, GenericTypeResolver? genericR
         }
     }
 
-    // Special case: --protoflux-only with -s generates a single combined schema
-    if (sources == AssemblySource.ProtoFluxBindings && className == null)
+    // Special case: --components-only or --protoflux-only with -s generates chunked schemas
+    // Both FrooxEngine components and ProtoFlux nodes go into the same component bucket files
+    if ((sources == AssemblySource.FrooxEngine || sources == AssemblySource.ProtoFluxBindings) && className == null)
     {
-        Console.WriteLine("Generating combined ProtoFlux schema...");
+        Console.WriteLine("Generating chunked schemas...");
         Console.WriteLine($"Output directory: {Path.GetFullPath(outputDir)}");
         Console.WriteLine();
 
         try
         {
-            var protoFluxTypes = loader.GetProtoFluxNodes().Where(t => !t.IsAbstract);
-            var combinedSchema = generator.GenerateProtoFluxCombinedSchema(protoFluxTypes);
-            string json = generator.SerializeSchema(combinedSchema);
+            // Get the appropriate types based on source filter
+            // Both FrooxEngine components and ProtoFlux nodes go into the same bucket set
+            IEnumerable<Type> allTypes;
+            if (sources == AssemblySource.FrooxEngine)
+            {
+                // --components-only: only FrooxEngine components
+                allTypes = loader.GetComponents().Where(t => !t.IsAbstract);
+                Console.WriteLine("Processing FrooxEngine components only...");
+            }
+            else
+            {
+                // --protoflux-only: only ProtoFlux nodes (but still uses components_XX naming)
+                allTypes = loader.GetProtoFluxNodes().Where(t => !t.IsAbstract);
+                Console.WriteLine("Processing ProtoFlux nodes only...");
+            }
 
-            string filePath = Path.Combine(outputDir, "protoflux.schema.json");
-            File.WriteAllText(filePath, json);
-            Console.WriteLine($"Created: protoflux.schema.json");
+            var (componentBuckets, enumBuckets, mainSchema) = generator.GenerateAllChunkedSchemas(allTypes);
+
+            // Write component bucket schemas
+            foreach (var (bucket, schema) in componentBuckets)
+            {
+                string fileName = JsonSchemaGenerator.GetBucketSchemaFileName(bucket, "components");
+                string filePath = Path.Combine(outputDir, fileName);
+                File.WriteAllText(filePath, generator.SerializeSchema(schema));
+                successCount++;
+            }
+            Console.WriteLine($"Created: {componentBuckets.Count} components_XX.schema.json files");
+
+            // Write enum bucket schemas
+            foreach (var (bucket, schema) in enumBuckets)
+            {
+                string fileName = JsonSchemaGenerator.GetBucketSchemaFileName(bucket, "enums");
+                string filePath = Path.Combine(outputDir, fileName);
+                File.WriteAllText(filePath, generator.SerializeSchema(schema));
+                successCount++;
+            }
+            Console.WriteLine($"Created: {enumBuckets.Count} enums_XX.schema.json files");
+
+            // Write main schema
+            string mainFilePath = Path.Combine(outputDir, "all_components.schema.json");
+            File.WriteAllText(mainFilePath, generator.SerializeSchema(mainSchema));
+            Console.WriteLine($"Created: all_components.schema.json");
             successCount++;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error generating combined ProtoFlux schema: {ex.Message}");
+            Console.WriteLine($"Error generating schemas: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
             errorCount++;
         }
+
+        // Generate/update resonitelink.schema.json
+        successCount += GenerateResoniteLinkSchema(generator, outputDir);
+
+        Console.WriteLine();
+        Console.WriteLine($"Generated {successCount} schema(s)");
+        if (errorCount > 0)
+        {
+            Console.WriteLine($"Failed: {errorCount}");
+        }
+        return errorCount > 0 ? 1 : 0;
+    }
+
+    // When running with -s without --components-only or --protoflux-only, generate ALL types
+    if (sources == AssemblySource.All && className == null && useExternalCommonSchema)
+    {
+        Console.WriteLine("Generating all chunked schemas (FrooxEngine + ProtoFlux)...");
+        Console.WriteLine($"Output directory: {Path.GetFullPath(outputDir)}");
+        Console.WriteLine();
+
+        try
+        {
+            // Combine both FrooxEngine components and ProtoFlux nodes
+            var frooxEngineTypes = loader.GetComponents().Where(t => !t.IsAbstract);
+            var protoFluxTypes = loader.GetProtoFluxNodes().Where(t => !t.IsAbstract);
+            var allTypes = frooxEngineTypes.Concat(protoFluxTypes);
+
+            Console.WriteLine("Processing all FrooxEngine components and ProtoFlux nodes...");
+
+            var (componentBuckets, enumBuckets, mainSchema) = generator.GenerateAllChunkedSchemas(allTypes);
+
+            // Write component bucket schemas
+            foreach (var (bucket, schema) in componentBuckets)
+            {
+                string fileName = JsonSchemaGenerator.GetBucketSchemaFileName(bucket, "components");
+                string filePath = Path.Combine(outputDir, fileName);
+                File.WriteAllText(filePath, generator.SerializeSchema(schema));
+                successCount++;
+            }
+            Console.WriteLine($"Created: {componentBuckets.Count} components_XX.schema.json files");
+
+            // Write enum bucket schemas
+            foreach (var (bucket, schema) in enumBuckets)
+            {
+                string fileName = JsonSchemaGenerator.GetBucketSchemaFileName(bucket, "enums");
+                string filePath = Path.Combine(outputDir, fileName);
+                File.WriteAllText(filePath, generator.SerializeSchema(schema));
+                successCount++;
+            }
+            Console.WriteLine($"Created: {enumBuckets.Count} enums_XX.schema.json files");
+
+            // Write main schema
+            string mainFilePath = Path.Combine(outputDir, "all_components.schema.json");
+            File.WriteAllText(mainFilePath, generator.SerializeSchema(mainSchema));
+            Console.WriteLine($"Created: all_components.schema.json");
+            successCount++;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating schemas: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            errorCount++;
+        }
+
+        // Generate/update resonitelink.schema.json
+        successCount += GenerateResoniteLinkSchema(generator, outputDir);
 
         Console.WriteLine();
         Console.WriteLine($"Generated {successCount} schema(s)");
@@ -520,15 +623,39 @@ static int HandleValidation(string[] args)
     if (jsonFile == null)
     {
         Console.WriteLine("Error: JSON file path is required");
-        Console.WriteLine("Usage: ComponentAnalyzer -v <json-file> --schema <schema-file> [--schema-dir <dir>]");
+        Console.WriteLine("Usage: ComponentAnalyzer -v <json-file> [--schema <schema-file>] [--schema-dir <dir>]");
         return 1;
     }
 
+    // If no schema file specified, look for resonitelink.schema.json
     if (schemaFile == null)
     {
-        Console.WriteLine("Error: --schema is required for validation");
-        Console.WriteLine("Usage: ComponentAnalyzer -v <json-file> --schema <schema-file> [--schema-dir <dir>]");
-        return 1;
+        // First check in schema-dir if provided
+        if (schemaDir != null)
+        {
+            string defaultSchema = Path.Combine(schemaDir, "resonitelink.schema.json");
+            if (File.Exists(defaultSchema))
+            {
+                schemaFile = defaultSchema;
+            }
+        }
+
+        // Then check in current directory
+        if (schemaFile == null && File.Exists("resonitelink.schema.json"))
+        {
+            schemaFile = "resonitelink.schema.json";
+            // Also set schema-dir to current directory if not set
+            schemaDir ??= ".";
+        }
+
+        if (schemaFile == null)
+        {
+            Console.WriteLine("Error: No schema file specified and resonitelink.schema.json not found");
+            Console.WriteLine("Usage: ComponentAnalyzer -v <json-file> [--schema <schema-file>] [--schema-dir <dir>]");
+            Console.WriteLine();
+            Console.WriteLine("Either specify --schema or ensure resonitelink.schema.json exists in the current directory or --schema-dir");
+            return 1;
+        }
     }
 
     if (!File.Exists(jsonFile))
@@ -546,7 +673,17 @@ static int HandleValidation(string[] args)
     try
     {
         var validator = new SchemaValidator();
-        var result = validator.ValidateWithCommonSchema(jsonFile, schemaFile, schemaDir);
+        ValidationResult result;
+
+        // Use smart validation for resonitelink.schema.json (extracts componentType and validates against specific schema)
+        if (Path.GetFileName(schemaFile) == "resonitelink.schema.json")
+        {
+            result = validator.ValidateAgainstResoniteLink(jsonFile, schemaDir ?? Path.GetDirectoryName(schemaFile) ?? ".");
+        }
+        else
+        {
+            result = validator.ValidateWithCommonSchema(jsonFile, schemaFile, schemaDir);
+        }
 
         if (result.IsValid)
         {
@@ -572,10 +709,36 @@ static int HandleValidation(string[] args)
     }
 }
 
+static int GenerateResoniteLinkSchema(JsonSchemaGenerator generator, string outputDir)
+{
+    try
+    {
+        var resoniteLinkSchema = JsonSchemaGenerator.GenerateResoniteLinkSchema(outputDir);
+        if (resoniteLinkSchema != null)
+        {
+            string json = generator.SerializeSchema(resoniteLinkSchema);
+            string filePath = Path.Combine(outputDir, "resonitelink.schema.json");
+            File.WriteAllText(filePath, json);
+            Console.WriteLine($"Created: resonitelink.schema.json");
+            return 1;
+        }
+        else
+        {
+            Console.WriteLine("Warning: Could not generate resonitelink.schema.json (no source schemas found)");
+            return 0;
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error generating resonitelink.schema.json: {ex.Message}");
+        return 0;
+    }
+}
+
 static void PrintUsage()
 {
     Console.WriteLine("Usage: ComponentAnalyzer <resonite-directory> [options]");
-    Console.WriteLine("       ComponentAnalyzer -v <json-file> --schema <schema-file> [--schema-dir <dir>]");
+    Console.WriteLine("       ComponentAnalyzer -v <json-file> [--schema <schema-file>] [--schema-dir <dir>]");
     Console.WriteLine();
     Console.WriteLine("Arguments:");
     Console.WriteLine("  <resonite-directory>   Path to Resonite installation directory containing");
@@ -584,17 +747,20 @@ static void PrintUsage()
     Console.WriteLine("Schema Generation Options:");
     Console.WriteLine("  -l, --list [pattern]   List components, optionally filtered by pattern");
     Console.WriteLine("  -p, --props <class>    Show public fields of a component");
-    Console.WriteLine("  -s, --schema [class]   Generate JSON schema (for specific class or all)");
-    Console.WriteLine("                         Automatically generates common.schema.json with shared type defs");
+    Console.WriteLine("  -s, --schema [class]   Generate JSON schemas (for specific class or all)");
+    Console.WriteLine("                         Generates: components_XX.schema.json (256 buckets)");
+    Console.WriteLine("                                    enums_XX.schema.json (for enum definitions)");
+    Console.WriteLine("                                    all_components.schema.json (references all)");
+    Console.WriteLine("                                    resonitelink.schema.json (for validation)");
     Console.WriteLine("  -c, --common           Generate only common.schema.json (no component schemas)");
     Console.WriteLine("  -o, --output <dir>     Output directory for schema files (default: current)");
     Console.WriteLine("  -d, --debug <class>    Show debug info (all members, generic constraints)");
-    Console.WriteLine("  --components-only      Only load FrooxEngine components (exclude ProtoFlux)");
-    Console.WriteLine("  --protoflux-only       Only load ProtoFlux nodes");
+    Console.WriteLine("  --components-only      Only process FrooxEngine components (exclude ProtoFlux)");
+    Console.WriteLine("  --protoflux-only       Only process ProtoFlux nodes (exclude FrooxEngine components)");
     Console.WriteLine();
     Console.WriteLine("Validation Options:");
     Console.WriteLine("  -v, --validate         Validate a JSON file against a schema");
-    Console.WriteLine("      --schema <file>    Schema file to validate against (required with -v)");
+    Console.WriteLine("      --schema <file>    Schema file to validate against (default: resonitelink.schema.json)");
     Console.WriteLine("      --schema-dir <dir> Directory containing schemas for $ref resolution");
     Console.WriteLine();
     Console.WriteLine("General Options:");
@@ -611,7 +777,7 @@ static void PrintUsage()
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -c -o ./schemas  # Generate common.schema.json only");
     Console.WriteLine("  ComponentAnalyzer /path/to/Resonite -d \"AssetLoader<1>\"");
     Console.WriteLine();
-    Console.WriteLine("  # Validate a component JSON file against its schema");
+    Console.WriteLine("  # Validate a component JSON file (uses resonitelink.schema.json by default)");
+    Console.WriteLine("  ComponentAnalyzer -v component.json --schema-dir ./schemas");
     Console.WriteLine("  ComponentAnalyzer -v component.json --schema FrooxEngine.AudioOutput.schema.json");
-    Console.WriteLine("  ComponentAnalyzer -v component.json --schema schema.json --schema-dir ./schemas");
 }
