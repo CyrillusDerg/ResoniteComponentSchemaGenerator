@@ -13,6 +13,23 @@ public class JsonSchemaGeneratorTests
         _fixture = fixture;
     }
 
+    /// <summary>
+    /// Helper to get component-specific properties from schema with allOf structure.
+    /// </summary>
+    private static JsonObject? GetComponentProperties(JsonObject schema)
+    {
+        return schema["allOf"]?[1]?["properties"]?.AsObject();
+    }
+
+    /// <summary>
+    /// Helper to get members properties from schema with allOf structure.
+    /// </summary>
+    private static JsonObject? GetMembersProperties(JsonObject schema)
+    {
+        var componentProps = GetComponentProperties(schema);
+        return componentProps?["members"]?["allOf"]?[1]?["properties"]?.AsObject();
+    }
+
     [Fact]
     public void GenerateSchema_NonGenericComponent_ReturnsValidSchema()
     {
@@ -25,7 +42,7 @@ public class JsonSchemaGeneratorTests
         Assert.NotNull(schema["$schema"]);
         Assert.NotNull(schema["$id"]);
         Assert.NotNull(schema["title"]);
-        Assert.NotNull(schema["properties"]);
+        Assert.NotNull(schema["allOf"]); // Now uses allOf instead of direct properties
     }
 
     [Fact]
@@ -89,7 +106,8 @@ public class JsonSchemaGeneratorTests
         Assert.NotNull(audioOutput);
 
         var schema = _fixture.SchemaGenerator.GenerateSchema(audioOutput);
-        var componentType = schema["properties"]?["componentType"]?["const"]?.GetValue<string>();
+        var componentProps = GetComponentProperties(schema);
+        var componentType = componentProps?["componentType"]?["const"]?.GetValue<string>();
 
         // Should be in format [FrooxEngine]FrooxEngine.ClassName
         Assert.StartsWith("[FrooxEngine]", componentType);
@@ -103,11 +121,14 @@ public class JsonSchemaGeneratorTests
         Assert.NotNull(audioOutput);
 
         var schema = _fixture.SchemaGenerator.GenerateSchema(audioOutput);
-        var members = schema["properties"]?["members"];
+        var componentProps = GetComponentProperties(schema);
+        var members = componentProps?["members"];
 
         Assert.NotNull(members);
-        Assert.Equal("object", members["type"]?.GetValue<string>());
-        Assert.NotNull(members["properties"]);
+        // Members now uses allOf structure
+        Assert.NotNull(members["allOf"]);
+        var membersProps = GetMembersProperties(schema);
+        Assert.NotNull(membersProps);
     }
 
     [Fact]
@@ -133,7 +154,8 @@ public class JsonSchemaGeneratorTests
         Assert.NotNull(audioOutput);
 
         var schema = _fixture.SchemaGenerator.GenerateSchema(audioOutput);
-        var source = schema["properties"]?["members"]?["properties"]?["Source"]?.AsObject();
+        var members = GetMembersProperties(schema);
+        var source = members?["Source"]?.AsObject();
 
         Assert.NotNull(source);
         Assert.Equal("object", source["type"]?.GetValue<string>());
@@ -149,7 +171,8 @@ public class JsonSchemaGeneratorTests
         Assert.NotNull(audioOutput);
 
         var schema = _fixture.SchemaGenerator.GenerateSchema(audioOutput);
-        var excludedListeners = schema["properties"]?["members"]?["properties"]?["ExcludedListeners"]?.AsObject();
+        var members = GetMembersProperties(schema);
+        var excludedListeners = members?["ExcludedListeners"]?.AsObject();
 
         Assert.NotNull(excludedListeners);
         Assert.Equal("object", excludedListeners["type"]?.GetValue<string>());
@@ -168,7 +191,7 @@ public class JsonSchemaGeneratorTests
         Assert.NotNull(audioOutput);
 
         var schema = _fixture.SchemaGenerator.GenerateSchema(audioOutput);
-        var members = schema["properties"]?["members"]?["properties"]?.AsObject();
+        var members = GetMembersProperties(schema);
         Assert.NotNull(members);
 
         // Multiple float fields should use $ref to common schema

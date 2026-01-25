@@ -29,6 +29,14 @@ public class ValueFieldSchemaTests
             ?? throw new InvalidOperationException("Common schema missing $defs");
     }
 
+    /// <summary>
+    /// Helper to get component-specific properties from a variant schema with allOf structure.
+    /// </summary>
+    private static JsonObject? GetVariantComponentProperties(JsonObject variantSchema)
+    {
+        return variantSchema["allOf"]?[1]?["properties"]?.AsObject();
+    }
+
     [Fact]
     public void Schema_HasCorrectMetadata()
     {
@@ -126,7 +134,8 @@ public class ValueFieldSchemaTests
         var boolVariant = _defs["ValueField_bool"]?.AsObject();
         Assert.NotNull(boolVariant);
 
-        var componentType = boolVariant["properties"]?["componentType"]?["const"]?.GetValue<string>();
+        var componentProps = GetVariantComponentProperties(boolVariant);
+        var componentType = componentProps?["componentType"]?["const"]?.GetValue<string>();
         Assert.Equal("[FrooxEngine]FrooxEngine.ValueField<bool>", componentType);
     }
 
@@ -136,7 +145,8 @@ public class ValueFieldSchemaTests
         var intVariant = _defs["ValueField_int"]?.AsObject();
         Assert.NotNull(intVariant);
 
-        var componentType = intVariant["properties"]?["componentType"]?["const"]?.GetValue<string>();
+        var componentProps = GetVariantComponentProperties(intVariant);
+        var componentType = componentProps?["componentType"]?["const"]?.GetValue<string>();
         Assert.Equal("[FrooxEngine]FrooxEngine.ValueField<int>", componentType);
     }
 
@@ -146,7 +156,8 @@ public class ValueFieldSchemaTests
         var float3Variant = _defs["ValueField_float3"]?.AsObject();
         Assert.NotNull(float3Variant);
 
-        var componentType = float3Variant["properties"]?["componentType"]?["const"]?.GetValue<string>();
+        var componentProps = GetVariantComponentProperties(float3Variant);
+        var componentType = componentProps?["componentType"]?["const"]?.GetValue<string>();
         Assert.Equal("[FrooxEngine]FrooxEngine.ValueField<float3>", componentType);
     }
 
