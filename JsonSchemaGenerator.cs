@@ -280,6 +280,7 @@ public class JsonSchemaGenerator
 
     /// <summary>
     /// Generates a concrete component schema with enum references pointing to external enum bucket files.
+    /// Uses allOf to combine common component_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateConcreteSchemaForDefWithExternalEnums(Type componentType, Dictionary<string, Type> enumTypesNeeded)
     {
@@ -288,30 +289,26 @@ public class JsonSchemaGenerator
 
         return new JsonObject
         {
-            ["type"] = "object",
-            ["additionalProperties"] = false,
             ["title"] = componentType.Name,
             ["description"] = $"ResoniteLink schema for {componentType.FullName}",
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["const"] = componentTypeName,
-                    ["description"] = "The component type in Resonite notation"
-                },
-                ["members"] = membersSchema,
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["const"] = componentTypeName,
+                            ["description"] = "The component type in Resonite notation"
+                        },
+                        ["members"] = membersSchema
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
     }
 
@@ -385,36 +382,33 @@ public class JsonSchemaGenerator
 
         return new JsonObject
         {
-            ["type"] = "object",
-            ["additionalProperties"] = false,
             ["title"] = baseName,
             ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} (generic type - accepts any valid type argument)",
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["type"] = "string",
-                    ["pattern"] = componentTypePattern,
-                    ["description"] = "The component type in Resonite notation (matches any valid type argument)"
-                },
-                ["members"] = membersSchema,
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["type"] = "string",
+                            ["pattern"] = componentTypePattern,
+                            ["description"] = "The component type in Resonite notation (matches any valid type argument)"
+                        },
+                        ["members"] = membersSchema
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
     }
 
     /// <summary>
     /// Generates a concrete schema for a generic type instance with external enum references.
+    /// Uses allOf to combine common component_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateConcreteSchemaForGenericInstanceWithExternalEnums(Type concreteType, Type typeArg, Dictionary<string, Type> enumTypesNeeded)
     {
@@ -425,59 +419,55 @@ public class JsonSchemaGenerator
 
         return new JsonObject
         {
-            ["type"] = "object",
-            ["additionalProperties"] = false,
             ["title"] = $"{GetBaseTypeName(concreteType.GetGenericTypeDefinition())}<{typeArgName}>",
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["const"] = componentTypeName,
-                    ["description"] = "The component type in Resonite notation"
-                },
-                ["members"] = membersSchema,
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["const"] = componentTypeName,
+                            ["description"] = "The component type in Resonite notation"
+                        },
+                        ["members"] = membersSchema
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
     }
 
     /// <summary>
     /// Generates members schema with external enum references (pointing to enums_XX.schema.json files).
+    /// Uses allOf to combine common member_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateMembersSchemaWithExternalEnums(Type componentType, Dictionary<string, Type> enumTypesNeeded)
     {
-        var membersSchema = new JsonObject
-        {
-            ["type"] = "object",
-            ["description"] = "Component members (fields) and their values",
-            ["additionalProperties"] = false,
-            ["properties"] = new JsonObject()
-        };
+        // Common member property names that are defined in member_properties
+        var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
 
-        var properties = (JsonObject)membersSchema["properties"]!;
+        var componentSpecificProperties = new JsonObject();
 
         var allFields = PropertyAnalyzer.GetAllSerializableFields(componentType);
 
         foreach (var field in allFields.OrderBy(f => f.Name))
         {
+            // Skip common member properties - they're included via member_properties ref
+            if (commonMemberNames.Contains(field.Name))
+                continue;
+
             try
             {
                 var fieldSchema = GenerateMemberSchemaWithExternalEnums(field, enumTypesNeeded);
-                properties[field.Name] = fieldSchema;
+                componentSpecificProperties[field.Name] = fieldSchema;
             }
             catch
             {
-                properties[field.Name] = new JsonObject
+                componentSpecificProperties[field.Name] = new JsonObject
                 {
                     ["additionalProperties"] = false,
                     ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
@@ -485,36 +475,49 @@ public class JsonSchemaGenerator
             }
         }
 
-        return membersSchema;
+        return new JsonObject
+        {
+            ["description"] = "Component members (fields) and their values",
+            ["allOf"] = new JsonArray
+            {
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" },
+                new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = componentSpecificProperties
+                }
+            },
+            ["unevaluatedProperties"] = false
+        };
     }
 
     /// <summary>
     /// Generates flexible members schema for generic types with external enum references.
+    /// Uses allOf to combine common member_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateFlexibleMembersSchemaWithExternalEnums(Type genericTypeDefinition, Dictionary<string, Type> enumTypesNeeded)
     {
-        var membersSchema = new JsonObject
-        {
-            ["type"] = "object",
-            ["description"] = "Component members (fields) and their values",
-            ["additionalProperties"] = false,
-            ["properties"] = new JsonObject()
-        };
+        // Common member property names that are defined in member_properties
+        var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
 
-        var properties = (JsonObject)membersSchema["properties"]!;
+        var componentSpecificProperties = new JsonObject();
 
         var allFields = PropertyAnalyzer.GetAllSerializableFields(genericTypeDefinition);
 
         foreach (var field in allFields.OrderBy(f => f.Name))
         {
+            // Skip common member properties - they're included via member_properties ref
+            if (commonMemberNames.Contains(field.Name))
+                continue;
+
             try
             {
                 var fieldSchema = GenerateMemberSchemaWithExternalEnums(field, enumTypesNeeded);
-                properties[field.Name] = fieldSchema;
+                componentSpecificProperties[field.Name] = fieldSchema;
             }
             catch
             {
-                properties[field.Name] = new JsonObject
+                componentSpecificProperties[field.Name] = new JsonObject
                 {
                     ["additionalProperties"] = false,
                     ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
@@ -522,7 +525,20 @@ public class JsonSchemaGenerator
             }
         }
 
-        return membersSchema;
+        return new JsonObject
+        {
+            ["description"] = "Component members (fields) and their values",
+            ["allOf"] = new JsonArray
+            {
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" },
+                new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = componentSpecificProperties
+                }
+            },
+            ["unevaluatedProperties"] = false
+        };
     }
 
     /// <summary>
@@ -854,6 +870,7 @@ public class JsonSchemaGenerator
 
     /// <summary>
     /// Generates a concrete component schema for embedding in $defs (no $schema or $id).
+    /// Uses allOf to combine common component_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateConcreteSchemaForDef(Type componentType, Dictionary<string, Type> typeDefsNeeded)
     {
@@ -862,30 +879,26 @@ public class JsonSchemaGenerator
 
         return new JsonObject
         {
-            ["type"] = "object",
-            ["additionalProperties"] = false,
             ["title"] = componentType.Name,
             ["description"] = $"ResoniteLink schema for {componentType.FullName}",
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["const"] = componentTypeName,
-                    ["description"] = "The component type in Resonite notation"
-                },
-                ["members"] = membersSchema,
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["const"] = componentTypeName,
+                            ["description"] = "The component type in Resonite notation"
+                        },
+                        ["members"] = membersSchema
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
     }
 
@@ -943,6 +956,7 @@ public class JsonSchemaGenerator
 
     /// <summary>
     /// Generates a flexible schema for generic types without [GenericTypes] attribute, suitable for embedding in $defs.
+    /// Uses allOf to combine common component_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateFlexibleGenericSchemaForDef(Type genericTypeDefinition, Dictionary<string, Type> typeDefsNeeded)
     {
@@ -959,31 +973,27 @@ public class JsonSchemaGenerator
 
         return new JsonObject
         {
-            ["type"] = "object",
-            ["additionalProperties"] = false,
             ["title"] = baseName,
             ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} (generic type - accepts any valid type argument)",
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["type"] = "string",
-                    ["pattern"] = componentTypePattern,
-                    ["description"] = "The component type in Resonite notation (matches any valid type argument)"
-                },
-                ["members"] = membersSchema,
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["type"] = "string",
+                            ["pattern"] = componentTypePattern,
+                            ["description"] = "The component type in Resonite notation (matches any valid type argument)"
+                        },
+                        ["members"] = membersSchema
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
     }
 
@@ -1110,6 +1120,38 @@ public class JsonSchemaGenerator
                 result[$"IField_{typeName}_ref"] = GenerateIFieldReferenceDefinition(typeName);
             }
         }
+
+        // Member properties common to all components (inside members object)
+        result["member_properties"] = new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["Enabled"] = new JsonObject { ["$ref"] = "#/$defs/bool_value" },
+                ["persistent"] = new JsonObject { ["$ref"] = "#/$defs/bool_value" },
+                ["UpdateOrder"] = new JsonObject { ["$ref"] = "#/$defs/int_value" }
+            }
+        };
+
+        // Component properties common to all components (at top level)
+        result["component_properties"] = new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["id"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Unique identifier for this component instance"
+                },
+                ["isReferenceOnly"] = new JsonObject
+                {
+                    ["type"] = "boolean",
+                    ["description"] = "Whether this is a reference-only component"
+                }
+            },
+            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+        };
 
         return result;
     }
@@ -1497,6 +1539,7 @@ public class JsonSchemaGenerator
     /// <summary>
     /// Generates a flexible schema for generic type definitions that don't have a [GenericTypes] attribute.
     /// Uses patterns instead of const values to allow any valid instantiation.
+    /// Uses allOf to combine common component_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateFlexibleGenericSchema(Type genericTypeDefinition)
     {
@@ -1521,29 +1564,25 @@ public class JsonSchemaGenerator
             ["$id"] = GetSafeSchemaId(genericTypeDefinition),
             ["title"] = baseName,
             ["description"] = $"ResoniteLink schema for {genericTypeDefinition.FullName} (generic type - accepts any valid type argument)",
-            ["type"] = "object",
-            ["additionalProperties"] = false,
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["type"] = "string",
-                    ["pattern"] = componentTypePattern,
-                    ["description"] = $"The component type in Resonite notation (e.g., {assemblyPrefix}{ns}.{baseName}<[FrooxEngine]FrooxEngine.Slot>)"
-                },
-                ["members"] = membersSchema,
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference only (i.e. has no member data)"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["type"] = "string",
+                            ["pattern"] = componentTypePattern,
+                            ["description"] = $"The component type in Resonite notation (e.g., {assemblyPrefix}{ns}.{baseName}<[FrooxEngine]FrooxEngine.Slot>)"
+                        },
+                        ["members"] = membersSchema
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
 
         // Add $defs if we have type definitions (excluding common types when using external schema)
@@ -1570,31 +1609,31 @@ public class JsonSchemaGenerator
 
     /// <summary>
     /// Generates members schema for generic type definitions, using flexible patterns for generic type references.
+    /// Uses allOf to combine common member_properties with component-specific properties.
     /// </summary>
     private JsonObject GenerateFlexibleMembersSchema(Type genericTypeDefinition, Dictionary<string, Type> typeDefsNeeded)
     {
-        var membersSchema = new JsonObject
-        {
-            ["type"] = "object",
-            ["description"] = "Component members (fields) and their values",
-            ["additionalProperties"] = false,
-            ["properties"] = new JsonObject()
-        };
+        // Common member property names that are defined in member_properties
+        var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
 
-        var properties = (JsonObject)membersSchema["properties"]!;
+        var componentSpecificProperties = new JsonObject();
 
         var allFields = PropertyAnalyzer.GetAllSerializableFields(genericTypeDefinition);
 
         foreach (var field in allFields.OrderBy(f => f.Name))
         {
+            // Skip common member properties - they're included via member_properties ref
+            if (commonMemberNames.Contains(field.Name))
+                continue;
+
             try
             {
                 var fieldSchema = GenerateFlexibleMemberSchema(field, typeDefsNeeded);
-                properties[field.Name] = fieldSchema;
+                componentSpecificProperties[field.Name] = fieldSchema;
             }
             catch
             {
-                properties[field.Name] = new JsonObject
+                componentSpecificProperties[field.Name] = new JsonObject
                 {
                     ["additionalProperties"] = false,
                     ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
@@ -1602,7 +1641,20 @@ public class JsonSchemaGenerator
             }
         }
 
-        return membersSchema;
+        return new JsonObject
+        {
+            ["description"] = "Component members (fields) and their values",
+            ["allOf"] = new JsonArray
+            {
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" },
+                new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = componentSpecificProperties
+                }
+            },
+            ["unevaluatedProperties"] = false
+        };
     }
 
     /// <summary>
@@ -1739,6 +1791,9 @@ public class JsonSchemaGenerator
         };
     }
 
+    /// <summary>
+    /// Uses allOf to combine common component_properties with component-specific properties.
+    /// </summary>
     private JsonObject GenerateConcreteSchema(Type componentType)
     {
         string componentTypeName = $"{GetAssemblyPrefix(componentType)}{componentType.FullName}";
@@ -1753,28 +1808,24 @@ public class JsonSchemaGenerator
             ["$id"] = GetSafeSchemaId(componentType),
             ["title"] = componentType.Name,
             ["description"] = $"ResoniteLink schema for {componentType.FullName}",
-            ["type"] = "object",
-            ["additionalProperties"] = false,
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["const"] = componentTypeName,
-                    ["description"] = "The component type in Resonite notation"
-                },
-                ["members"] = membersSchema,
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["const"] = componentTypeName,
+                            ["description"] = "The component type in Resonite notation"
+                        },
+                        ["members"] = membersSchema
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
 
         // Add $defs if we have type definitions (excluding common types when using external schema)
@@ -1873,35 +1924,34 @@ public class JsonSchemaGenerator
         return resultSchema;
     }
 
+    /// <summary>
+    /// Uses allOf to combine common component_properties with component-specific properties.
+    /// </summary>
     private JsonObject GenerateConcreteSchemaForGenericInstance(Type concreteType, Type typeArg, bool useRefs = false, Dictionary<string, Type>? typeDefsNeeded = null)
     {
         string componentTypeName = FormatGenericComponentTypeName(concreteType);
 
         return new JsonObject
         {
-            ["type"] = "object",
-            ["additionalProperties"] = false,
             ["title"] = $"{GetBaseTypeName(concreteType.GetGenericTypeDefinition())}<{GetSimpleTypeName(typeArg)}>",
-            ["properties"] = new JsonObject
+            ["allOf"] = new JsonArray
             {
-                ["componentType"] = new JsonObject
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/component_properties" },
+                new JsonObject
                 {
-                    ["const"] = componentTypeName,
-                    ["description"] = "The component type in Resonite notation"
-                },
-                ["members"] = GenerateMembersSchema(concreteType, useRefs, typeDefsNeeded),
-                ["id"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["description"] = "Unique identifier for this component instance"
-                },
-                ["isReferenceOnly"] = new JsonObject
-                {
-                    ["type"] = "boolean",
-                    ["description"] = "Whether this is a reference-only component"
+                    ["type"] = "object",
+                    ["properties"] = new JsonObject
+                    {
+                        ["componentType"] = new JsonObject
+                        {
+                            ["const"] = componentTypeName,
+                            ["description"] = "The component type in Resonite notation"
+                        },
+                        ["members"] = GenerateMembersSchema(concreteType, useRefs, typeDefsNeeded)
+                    }
                 }
             },
-            ["required"] = new JsonArray { "id", "isReferenceOnly" }
+            ["unevaluatedProperties"] = false
         };
     }
 
@@ -2310,31 +2360,33 @@ public class JsonSchemaGenerator
         };
     }
 
+    /// <summary>
+    /// Uses allOf to combine common member_properties with component-specific properties.
+    /// </summary>
     private JsonObject GenerateMembersSchema(Type componentType, bool useRefs = false, Dictionary<string, Type>? typeDefsNeeded = null)
     {
-        var membersSchema = new JsonObject
-        {
-            ["type"] = "object",
-            ["description"] = "Component members (fields) and their values",
-            ["additionalProperties"] = false,
-            ["properties"] = new JsonObject()
-        };
+        // Common member property names that are defined in member_properties
+        var commonMemberNames = new HashSet<string> { "Enabled", "persistent", "UpdateOrder" };
 
-        var properties = (JsonObject)membersSchema["properties"]!;
+        var componentSpecificProperties = new JsonObject();
 
         // Get all serializable fields including protected base class fields with NameOverride handling
         var allFields = PropertyAnalyzer.GetAllSerializableFields(componentType);
 
         foreach (var field in allFields.OrderBy(f => f.Name))
         {
+            // Skip common member properties - they're included via member_properties ref
+            if (commonMemberNames.Contains(field.Name))
+                continue;
+
             try
             {
                 var fieldSchema = GenerateMemberSchema(field, useRefs, typeDefsNeeded);
-                properties[field.Name] = fieldSchema;
+                componentSpecificProperties[field.Name] = fieldSchema;
             }
             catch
             {
-                properties[field.Name] = new JsonObject
+                componentSpecificProperties[field.Name] = new JsonObject
                 {
                     ["additionalProperties"] = false,
                     ["description"] = $"Type: {field.FriendlyTypeName} (could not analyze)"
@@ -2342,7 +2394,20 @@ public class JsonSchemaGenerator
             }
         }
 
-        return membersSchema;
+        return new JsonObject
+        {
+            ["description"] = "Component members (fields) and their values",
+            ["allOf"] = new JsonArray
+            {
+                new JsonObject { ["$ref"] = $"{CommonSchemaFileName}#/$defs/member_properties" },
+                new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] = componentSpecificProperties
+                }
+            },
+            ["unevaluatedProperties"] = false
+        };
     }
 
     private JsonObject GenerateMemberSchema(ComponentField field, bool useRefs = false, Dictionary<string, Type>? typeDefsNeeded = null)
